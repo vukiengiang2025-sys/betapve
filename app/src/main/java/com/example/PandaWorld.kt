@@ -1537,6 +1537,7 @@ fun PandaHomeLobby(
             var tempPandaName by remember { mutableStateOf(pandaName) }
             val customApiKeyFlow by viewModel.customGeminiApiKey.collectAsState()
             var tempCustomApiKey by remember { mutableStateOf(customApiKeyFlow) }
+            var isKeyVisible by remember { mutableStateOf(false) }
 
             ToyPopup(
                 onDismissRequest = { showSettingsDialog = false },
@@ -1595,14 +1596,65 @@ fun PandaHomeLobby(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = tempCustomApiKey,
-                    onValueChange = { tempCustomApiKey = it },
-                    label = { Text("Mã API Key (Gemini AI)") },
-                    placeholder = { Text("Nhập API Key để mở khóa Vẽ AI tự do...") },
-                    singleLine = true,
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Text(
+                        text = "🔑 Khóa bảo mật Gemini API (API Key) cá nhân:",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00796B)
+                    )
+                    Text(
+                        text = "Nhập mã API Key của ba mẹ để mở khóa tính năng vẽ phác thảo AI cho bé tự do tô màu. Khóa được lưu trữ an toàn trong thiết bị này.",
+                        fontSize = 9.sp,
+                        color = Color.Gray,
+                        lineHeight = 11.sp
+                    )
+
+                    OutlinedTextField(
+                        value = tempCustomApiKey,
+                        onValueChange = { tempCustomApiKey = it },
+                        label = { Text("Mã API Key (Gemini AI)") },
+                        placeholder = { Text("Nhập API Key để mở khóa Vẽ AI tự do...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (isKeyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                                Text(if (isKeyVisible) "👁️" else "🙈", fontSize = 14.sp)
+                            }
+                        }
+                    )
+
+                    val isKeyValid = tempCustomApiKey.trim().startsWith("AIzaSy") && tempCustomApiKey.trim().length > 10
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = if (tempCustomApiKey.isBlank()) "ℹ️ Ba mẹ chưa thiết lập API Key riêng."
+                                   else if (isKeyValid) "✓ Mã API Key có định dạng hợp lệ."
+                                   else "⚠️ Định dạng API Key có thể chưa chính xác (thường bắt đầu bằng AIzaSy).",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (tempCustomApiKey.isBlank()) Color.Gray
+                                    else if (isKeyValid) Color(0xFF2E7D32)
+                                    else Color(0xFFC62828)
+                        )
+                    }
+
+                    Text(
+                        text = "👉 Ba mẹ lấy mã API Key miễn phí tại: aistudio.google.com",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0288D1)
+                    )
+                }
             }
         }
     }
@@ -1765,6 +1817,7 @@ fun PandaAiRoom(
     canvasHeight: Float
 ) {
     val context = LocalContext.current
+    var showGeminiKeyModal by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -1800,7 +1853,15 @@ fun PandaAiRoom(
                     color = Color(0xFF006064)
                 )
 
-                Spacer(modifier = Modifier.width(44.dp))
+                IconButton(
+                    onClick = { showGeminiKeyModal = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Color.White, CircleShape)
+                        .shadow(2.dp, CircleShape)
+                ) {
+                    Text("⚙️", fontSize = 18.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1957,6 +2018,194 @@ fun PandaAiRoom(
                         .shadow(4.dp, RoundedCornerShape(24.dp))
                 ) {
                     Text("Vào Xưởng Tô Màu 🎨", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+            if (showGeminiKeyModal) {
+                SecureGeminiKeyModal(
+                    onDismissRequest = { showGeminiKeyModal = false },
+                    viewModel = viewModel
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SecureGeminiKeyModal(
+    onDismissRequest: () -> Unit,
+    viewModel: DrawingViewModel
+) {
+    val customApiKeyFlow by viewModel.customGeminiApiKey.collectAsState()
+    var tempKey by remember { mutableStateOf(customApiKeyFlow) }
+    var isKeyVisible by remember { mutableStateOf(false) }
+    
+    // Simple parent gate challenge state (e.g., "7 + 5 = ?") so child cannot access it
+    var showParentGate by remember { mutableStateOf(true) }
+    var gateInput by remember { mutableStateOf("") }
+    var gateError by remember { mutableStateOf(false) }
+    
+    // Random math question
+    val num1 by remember { mutableStateOf((3..9).random()) }
+    val num2 by remember { mutableStateOf((3..9).random()) }
+    val correctAnswer = num1 + num2
+
+    if (showParentGate) {
+        ToyPopup(
+            onDismissRequest = onDismissRequest,
+            title = "Khu Vực Cho Ba Mẹ 👨‍👩‍👧",
+            emoji = "🔒",
+            borderColor = Color(0xFF009688),
+            confirmButton = {
+                BubbleButton(
+                    onClick = {
+                        val ans = gateInput.toIntOrNull()
+                        if (ans == correctAnswer) {
+                            showParentGate = false
+                        } else {
+                            gateError = true
+                        }
+                    },
+                    backgroundColor = Color(0xFF009688),
+                    borderColor = Color(0xFF004D40)
+                ) {
+                    Text("Xác nhận", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRequest) {
+                    Text("Hủy bỏ", color = Color.Gray, fontWeight = FontWeight.Bold)
+                }
+            }
+        ) {
+            Text(
+                text = "Để tiếp tục, ba mẹ hãy trả lời phép tính này để xác minh bảo mật nhé:",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            
+            Text(
+                text = "$num1 + $num2 = ?",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF00796B),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            OutlinedTextField(
+                value = gateInput,
+                onValueChange = { gateInput = it },
+                placeholder = { Text("Nhập kết quả...") },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (gateError) {
+                Text(
+                    text = "⚠️ Phép tính chưa chính xác, ba mẹ hãy thử lại nhé!",
+                    fontSize = 11.sp,
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    } else {
+        ToyPopup(
+            onDismissRequest = onDismissRequest,
+            title = "Cài Đặt Gemini API Key",
+            emoji = "🔑",
+            borderColor = Color(0xFF00ACC1),
+            confirmButton = {
+                BubbleButton(
+                    onClick = {
+                        viewModel.setCustomGeminiApiKey(tempKey)
+                        onDismissRequest()
+                    },
+                    backgroundColor = Color(0xFF00ACC1),
+                    borderColor = Color(0xFF006064)
+                ) {
+                    Text("Lưu Trữ An Toàn", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRequest) {
+                    Text("Đóng", color = Color.Gray, fontWeight = FontWeight.Bold)
+                }
+            }
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Bảo Mật API Key của Bạn:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF006064)
+                )
+
+                Text(
+                    text = "Mã API Key được lưu trữ an toàn ngay trên thiết bị này và được sử dụng cục bộ để gửi yêu cầu vẽ tranh tới mô hình Google Gemini. Chúng tôi KHÔNG truyền mã này về bất kỳ máy chủ bên thứ ba nào.",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    lineHeight = 14.sp
+                )
+
+                OutlinedTextField(
+                    value = tempKey,
+                    onValueChange = { tempKey = it },
+                    label = { Text("Mã API Key (Gemini API)") },
+                    placeholder = { Text("Dán mã API Key của bạn vào đây...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (isKeyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                            Text(if (isKeyVisible) "👁️" else "🙈", fontSize = 14.sp)
+                        }
+                    }
+                )
+
+                val isKeyValid = tempKey.trim().startsWith("AIzaSy") && tempKey.trim().length > 10
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (tempKey.isBlank()) "ℹ️ Ba mẹ chưa thiết lập API Key."
+                               else if (isKeyValid) "✓ Mã API Key có định dạng hợp lệ."
+                               else "⚠️ Định dạng API Key chưa chính xác (thường bắt đầu bằng AIzaSy).",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (tempKey.isBlank()) Color.Gray
+                                else if (isKeyValid) Color(0xFF2E7D32)
+                                else Color(0xFFC62828)
+                    )
+                }
+
+                Divider()
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "💡 Cách lấy mã API Key miễn phí:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF006064)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "1. Truy cập trang web Google AI Studio: aistudio.google.com\n2. Đăng nhập bằng tài khoản Google của ba mẹ.\n3. Nhấp vào nút \"Get API Key\" và tạo một mã khóa mới.\n4. Sao chép và dán vào đây để mở khóa tính năng vẽ AI diệu kỳ cho bé!",
+                            fontSize = 10.sp,
+                            color = Color(0xFF006064),
+                            lineHeight = 13.sp
+                        )
+                    }
                 }
             }
         }
