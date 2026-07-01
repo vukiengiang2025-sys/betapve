@@ -23,6 +23,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.Brush
@@ -37,6 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.geometry.Offset
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -120,6 +129,15 @@ fun PandaWorldHome(
     }
 }
 
+data class VisualSound(
+    val id: Long,
+    val text: String,
+    val emoji: String,
+    val x: Float,
+    val y: Float,
+    val color: Color
+)
+
 @Composable
 fun PandaHomeLobby(
     onRoomChange: (String) -> Unit,
@@ -130,6 +148,63 @@ fun PandaHomeLobby(
     val childName by viewModel.childName.collectAsState()
     val childAge by viewModel.childAge.collectAsState()
     val pandaName by viewModel.pandaName.collectAsState()
+
+    // --- Dynamic Time of Day Cycle (Chu kỳ ngày & đêm thực tế) ---
+    val currentHour = remember {
+        java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    }
+    val isNight = currentHour >= 18 || currentHour < 6
+    val isSunset = currentHour == 17
+
+    // --- Panda Schedule Engine (Lịch trình của chú Panda theo giờ thực) ---
+    val (scheduleEmoji, scheduleSpeech) = remember(currentHour, childName, pandaName) {
+        when {
+            currentHour in 6..10 -> {
+                "🐼💦" to "Chào buổi sáng bé $childName yêu! $pandaName đang tưới tre non xanh mướt ở Vườn Trúc nè, cùng đi vẽ tranh đón ngày mới nha! 🎋💦"
+            }
+            currentHour in 11..13 -> {
+                "🐼🥣" to "Nhoàm nhoàm... Đến giờ ăn trưa rồi, $pandaName đang mút tre non ngon ngọt lịm! Bé $childName nhớ ăn ngoan và ngủ trưa nha! 🥣🎋"
+            }
+            currentHour in 14..17 -> {
+                "🐼🎨" to "Họa sĩ $pandaName xin chào bé $childName! Chiều nay mát mẻ quá, chúng mình cùng vào xưởng vẽ tranh rực rỡ sắc màu nhé! 🎨🖌"
+            }
+            currentHour in 18..20 -> {
+                "🐼📚" to "Tối ấm áp nhé bé $childName! $pandaName đang ngồi đọc truyện tranh cổ tích thần tiên. Chúng mình cùng khám phá vương quốc nào! 📚✨"
+            }
+            else -> {
+                "🐼💤" to "Suỵt... khò khò... Đến giờ đi ngủ ấm áp rồi bé yêu ơi! Chúc bé $childName ngủ ngon và có giấc mơ bay bổng lấp lánh nhé! 🛌💤"
+            }
+        }
+    }
+
+    // --- Panda Memory & Progression Dialog Box (Nhớ sở thích màu & thành tựu vẽ của bé) ---
+    val favoriteColor = viewModel.getFavoriteColorCategory()
+    val isFirstTime = savedDrawingsCount == 0
+    val ageTierText = viewModel.getAgeTier().levelName
+
+    val initialPandaGreeting = remember(childName, savedDrawingsCount, favoriteColor, scheduleSpeech) {
+        val colorReminder = if (favoriteColor.contains("nét vẽ")) {
+            " Tớ nhớ hôm trước bé thích tô tông màu $favoriteColor lắm nè! Hôm nay vẽ tiếp xem có mở khóa thêm hoa mới không nha!"
+        } else " Hôm nay bé muốn thử sức với cọ vẽ Bảy Sắc Cầu Vồng 🌈 lấp lánh không nè?"
+        
+        when {
+            isFirstTime -> {
+                "Chào bé $childName yêu! Vương quốc của chúng mình còn mới toanh nè. Mau vào Xưởng Vẽ 🎨 tô tranh đầu tiên để trồng thêm cây xanh nha! 🌳✨"
+            }
+            savedDrawingsCount in 1..2 -> {
+                "Oa! Bé $childName đã vẽ được $savedDrawingsCount bức tranh rồi! Làng của tụi mình có thêm cây rừng 🌳 và hoa hồng nở rực rỡ 🌷 rồi đó! Bé giỏi quá!$colorReminder"
+            }
+            savedDrawingsCount in 3..4 -> {
+                "Tuyệt vời ông mặt trời! Bé $childName vẽ siêu thế, làng của chúng mình đã mọc thêm cây cầu gỗ 🌉 bắc qua sông lấp lánh rồi!$colorReminder"
+            }
+            savedDrawingsCount in 5..6 -> {
+                "Quá là đỉnh luôn! Bé $childName đã vẽ được $savedDrawingsCount tranh rồi! Làng của chúng mình giờ có thêm Đài Phun Nước Phép Thuật ⛲ lộng lẫy phun bong bóng nữa nè!$colorReminder"
+            }
+            else -> {
+                "Kính coong! Đại họa sĩ $childName ($ageTierText) đã vẽ tận $savedDrawingsCount tranh! Vương quốc giờ có thêm Vòng Quay Ngôi Sao 🎡 khổng lồ lấp lánh rồi!$colorReminder"
+            }
+        }
+    }
 
     val pandaSayings = remember(childName, childAge, pandaName) {
         listOf(
@@ -142,448 +217,1470 @@ fun PandaHomeLobby(
         )
     }
 
-    var speechText by remember { mutableStateOf("Chào mừng bé $childName đã tới với Thế Giới Hoạt Hình của $pandaName! 🏡🐼🌟") }
-    var pandaScale by remember { mutableStateOf(1.0f) }
+    var speechText by remember { mutableStateOf(initialPandaGreeting) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(childName, pandaName) {
-        speechText = "Chào mừng bé $childName đã tới với Thế Giới Hoạt Hình của $pandaName! 🏡🐼🌟"
+    LaunchedEffect(childName, pandaName, savedDrawingsCount) {
+        speechText = initialPandaGreeting
     }
 
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    // --- Interactive Weather System (Chạm mây làm mưa bong bóng và hiện cầu vồng) ---
+    var isRaining by remember { mutableStateOf(false) }
+    var showRainbow by remember { mutableStateOf(false) }
 
+    // --- Living Village & Animation Task States ---
+    var pandaTaskState by remember { mutableStateOf("IDLE") } // "IDLE", "PLANT_DIGGING", "PLANT_WATERING", "PLANT_GROWING", "FOUNTAIN_ACTIVATE", "FOUNTAIN_SHOWING", "FERRIS_RIDING", "FERRIS_WAVING"
+    var showFountainGuests by remember { mutableStateOf(false) }
+    var isPandaOnFerrisWheel by remember { mutableStateOf(false) }
+    var showDuckBabies by remember { mutableStateOf(false) }
+    var isEnteringApp by remember { mutableStateOf(true) }
+
+    // Click counters for Hidden Discoveries
+    var treeTapCount by remember { mutableStateOf(0) }
+    var cloudTapCount by remember { mutableStateOf(0) }
+    var isCandyRainActive by remember { mutableStateOf(false) }
+    var showUnicorn by remember { mutableStateOf(false) }
+    var showSquirrel by remember { mutableStateOf(false) }
+
+    // Bread Toss Animation states
+    var isBreadFlying by remember { mutableStateOf(false) }
+    var breadStartX by remember { mutableStateOf(0f) }
+    var breadStartY by remember { mutableStateOf(0f) }
+    var breadEndX by remember { mutableStateOf(0f) }
+    var breadEndY by remember { mutableStateOf(0f) }
+    var duckTapCount by remember { mutableStateOf(0) }
+
+    val breadProgress by animateFloatAsState(
+        targetValue = if (isBreadFlying) 1.0f else 0.0f,
+        animationSpec = tween(1200, easing = LinearEasing),
+        label = "BreadProgress",
+        finishedListener = {
+            if (it >= 0.99f) {
+                isBreadFlying = false
+                // Also trigger particles at duck destination!
+                viewModel.spawnEmojiParticles(breadEndX * 2.5f, breadEndY * 2.5f, "❤️", count = 6)
+            }
+        }
+    )
+
+    // --- Parent Settings Dialog States ---
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // --- Interactive Visual Sound Effects (Toca Boca/Sago Mini-style visual sounds) ---
+    var visualSounds by remember { mutableStateOf<List<VisualSound>>(emptyList()) }
+    var soundIdCounter by remember { mutableStateOf(0L) }
+    
+    val triggerVisualSound = { text: String, emoji: String, x: Float, y: Float, color: Color ->
+        val newId = soundIdCounter++
+        visualSounds = visualSounds + VisualSound(newId, text, emoji, x, y, color)
+    }
+
+    // --- Village Map Configurations & Destinations ---
+    // Proportional Coordinates for locations on our cute village map
+    val destinations = remember {
+        listOf(
+            VillageDestination(
+                id = "home_action",
+                title = "Nhà Cozy",
+                description = "Nhà tranh ấm cúng của Panda & Bé",
+                emoji = "🏡",
+                relativeX = 0.15f,
+                relativeY = 0.22f,
+                bgColor = Color(0xFFFFF9C4),
+                borderColor = Color(0xFFFBC02D),
+                isHomeAction = true
+            ),
+            VillageDestination(
+                id = "studio",
+                title = "Xưởng Vẽ",
+                description = "Cọ màu phép thuật & hình dán",
+                emoji = "🎨",
+                relativeX = 0.48f,
+                relativeY = 0.16f,
+                bgColor = Color(0xFFFFEBEE),
+                borderColor = Color(0xFFE57373)
+            ),
+            VillageDestination(
+                id = "drawing_class",
+                title = "Lớp Học Vẽ",
+                description = "Tập vẽ từng bước ngộ nghĩnh",
+                emoji = "🏫",
+                relativeX = 0.80f,
+                relativeY = 0.24f,
+                bgColor = Color(0xFFE8EAF6),
+                borderColor = Color(0xFF7986CB)
+            ),
+            VillageDestination(
+                id = "ai_room",
+                title = "Robot AI",
+                description = "Gợi ý vẽ phác thảo từ ý tưởng",
+                emoji = "🤖",
+                relativeX = 0.18f,
+                relativeY = 0.54f,
+                bgColor = Color(0xFFE0F7FA),
+                borderColor = Color(0xFF4DD0E1)
+            ),
+            VillageDestination(
+                id = "garden",
+                title = "Vườn Trúc",
+                description = "Khu vườn trúc xanh ngát",
+                emoji = "🎋",
+                relativeX = 0.48f,
+                relativeY = 0.48f,
+                bgColor = Color(0xFFE8F5E9),
+                borderColor = Color(0xFF81C784)
+            ),
+            VillageDestination(
+                id = "badge_room",
+                title = "Vinh Danh",
+                description = "Khoe huy hiệu bé đạt được",
+                emoji = "🏆",
+                relativeX = 0.82f,
+                relativeY = 0.58f,
+                bgColor = Color(0xFFF3E5F5),
+                borderColor = Color(0xFFBA68C8)
+            ),
+            VillageDestination(
+                id = "museum",
+                title = "Bảo Tàng",
+                description = "Nơi trưng bày kiệt tác của bé",
+                emoji = "🏛️",
+                relativeX = 0.32f,
+                relativeY = 0.82f,
+                bgColor = Color(0xFFFFF8E1),
+                borderColor = Color(0xFFFFD54F)
+            ),
+            VillageDestination(
+                id = "gift_room",
+                title = "Phòng Quà",
+                description = "Mở hộp quà phép thuật",
+                emoji = "🎁",
+                relativeX = 0.66f,
+                relativeY = 0.80f,
+                bgColor = Color(0xFFEFEBE9),
+                borderColor = Color(0xFFA1887F)
+            )
+        )
+    }
+
+    // --- Interactive Traveling Panda State ---
+    var targetDestination by remember { mutableStateOf<VillageDestination?>(null) }
+    var isPandaMoving by remember { mutableStateOf(false) }
+    var currentRelX by remember { mutableStateOf(0.15f) }
+    var currentRelY by remember { mutableStateOf(0.22f) }
+
+    val animatedRelX by animateFloatAsState(
+        targetValue = targetDestination?.relativeX ?: currentRelX,
+        animationSpec = tween(1200, easing = FastOutSlowInEasing),
+        finishedListener = { finalX ->
+            currentRelX = finalX
+            targetDestination?.let { dest ->
+                isPandaMoving = false
+                if (dest.isHomeAction) {
+                    showSettingsDialog = true
+                } else {
+                    viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 15)
+                    viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 10)
+                    onRoomChange(dest.id)
+                }
+                targetDestination = null
+            }
+        },
+        label = "PandaX"
+    )
+
+    val animatedRelY by animateFloatAsState(
+        targetValue = targetDestination?.relativeY ?: currentRelY,
+        animationSpec = tween(1200, easing = FastOutSlowInEasing),
+        label = "PandaY"
+    )
+
+    // --- Global Map Infinite Animations ---
+    val infiniteTransition = rememberInfiniteTransition(label = "VillageMapAnims")
+    
+    // 1. Drifting Clouds
+    val cloudOffset1 by infiniteTransition.animateFloat(
+        initialValue = -120f,
+        targetValue = 800f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(28000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "DriftingCloud1"
+    )
+    val cloudOffset2 by infiniteTransition.animateFloat(
+        initialValue = 800f,
+        targetValue = -120f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(34000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "DriftingCloud2"
+    )
+
+    // 2. Butterfly Fluttering (Sinuous wave path)
+    val timeSeconds by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(6000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "FlutterTime"
+    )
+    val butterflyX = 220f + Math.sin(timeSeconds.toDouble()).toFloat() * 140f
+    val butterflyY = 180f + Math.cos(2 * timeSeconds.toDouble()).toFloat() * 60f
+
+    // 3. Floating leaves drifting down gently
+    val leafProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(9000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "FallingLeaf"
+    )
+    val leafX = (leafProgress * 700f) % 600f
+    val leafY = (leafProgress * 800f) % 900f
+
+    // 4. Raindrops animation (when isRaining is active)
+    val rainProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "RainDrop"
+    )
+
+    // 5. Panda Wobble & Jump scale when running
+    val currentWobbleRotation = if (isPandaMoving) {
+        Math.sin(timeSeconds.toDouble() * 12).toFloat() * 14f
+    } else {
+        0f
+    }
+    val currentWobbleScale = if (isPandaMoving) {
+        1.0f + Math.abs(Math.sin(timeSeconds.toDouble() * 12)).toFloat() * 0.18f
+    } else {
+        1.0f
+    }
+
+    // --- Camera scrolling viewport factor with Signature Opening Entrance Zoom ---
+    val density = LocalDensity.current
+    val cameraScaleAnimate by animateFloatAsState(
+        targetValue = if (isEnteringApp) 1.55f else 1.15f,
+        animationSpec = tween(2200, easing = FastOutSlowInEasing),
+        label = "CameraScale"
+    )
+    val cameraScale = cameraScaleAnimate
+    val cameraOffsetX = -(animatedRelX - 0.5f) * 110f // Dynamic shift based on Panda X
+    val cameraOffsetY = -(animatedRelY - 0.5f) * 110f // Dynamic shift based on Panda Y
+
+    // --- Signature Opening Sequence on First Launch ---
+    LaunchedEffect(Unit) {
+        // Panda starts inside Cozy Cottage at (0.15f, 0.22f)
+        delay(600)
+        // Panda runs out to the cozy courtyard!
+        isPandaMoving = true
+        currentRelX = 0.24f
+        currentRelY = 0.28f
+        delay(1400)
+        isPandaMoving = false
+        // Zoom out the camera
+        isEnteringApp = false
+        speechText = "Hôm nay mình vẽ gì và chơi gì nào bé ơi! 🎨✨"
+    }
+
+    // --- Dynamic Background Gradient based on Time of Day (Chu kỳ sáng, chiều tà, tối thẫm) ---
+    val mapSkyBackground = remember(isNight, isSunset) {
+        when {
+            isNight -> Brush.verticalGradient(
+                listOf(Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0F172A))
+            )
+            isSunset -> Brush.verticalGradient(
+                listOf(Color(0xFFF97316), Color(0xFFF43F5E), Color(0xFFFEF08A))
+            )
+            else -> Brush.verticalGradient(
+                listOf(Color(0xFF38BDF8), Color(0xFFBAE6FD), Color(0xFFF0FDF4))
+            )
+        }
+    }
+
+    // --- Main Layout ---
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFFFFF9C4), Color(0xFFE8F5E9))
-                )
-            )
+            .background(mapSkyBackground)
     ) {
-        // Decorative background elements
+        // --- Ambient Star Field for Night Mode (Mưa đom đóm lấp lánh ban đêm) ---
+        if (isNight) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val numFireflies = 10
+                for (i in 0 until numFireflies) {
+                    val angleOffset = i * (2 * Math.PI / numFireflies)
+                    val glowX = (size.width * 0.1f) + ((Math.sin(timeSeconds.toDouble() + angleOffset).toFloat() + 1f) / 2f) * (size.width * 0.8f)
+                    val glowY = (size.height * 0.2f) + ((Math.cos(timeSeconds.toDouble() * 0.7 + angleOffset).toFloat() + 1f) / 2f) * (size.height * 0.6f)
+                    val glowAlpha = 0.4f + Math.abs(Math.sin(timeSeconds.toDouble() * 2 + i)).toFloat() * 0.6f
+                    drawCircle(
+                        color = Color(0xFFA3E635),
+                        radius = 6.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(glowX, glowY),
+                        alpha = glowAlpha * 0.7f
+                    )
+                }
+            }
+        }
+
+        // Camera-scrolled inner world container
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = cameraScale
+                    scaleY = cameraScale
+                    translationX = with(density) { cameraOffsetX.dp.toPx() }
+                    translationY = with(density) { cameraOffsetY.dp.toPx() }
+                }
+        ) {
+            // 0. Dynamic Winding River background canvas (Flowing diagonally/vertically)
+            Canvas(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    triggerVisualSound("róc rách", "🌊", offset.x / 2.5f, offset.y / 2.5f, Color(0xFF29B6F6))
+                }
+            }) {
+                val riverPath = Path()
+                riverPath.moveTo(size.width * 0.38f, 0f)
+                riverPath.quadraticTo(size.width * 0.44f, size.height * 0.30f, size.width * 0.35f, size.height * 0.60f)
+                riverPath.quadraticTo(size.width * 0.41f, size.height * 0.85f, size.width * 0.37f, size.height * 1.10f)
+
+                drawPath(
+                    path = riverPath,
+                    color = Color(0xFF90CAF9), // Soft sparkling river blue
+                    style = Stroke(
+                        width = 24.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                )
+                drawPath(
+                    path = riverPath,
+                    color = Color(0xFFE3F2FD), // white sparkles
+                    style = Stroke(
+                        width = 6.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                )
+            }
+
+            // Dynamic map background canvas: Beautiful pathways connecting our buildings
+            Canvas(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    triggerVisualSound("sột soạt", "🌿", offset.x / 2.5f, offset.y / 2.5f, Color(0xFF81C784))
+                }
+            }) {
+                val path = Path()
+                // Start at Cozy Cottage
+                path.moveTo(size.width * 0.15f, size.height * 0.22f)
+                
+                // Bezier curve to Art Studio
+                path.quadraticTo(
+                    size.width * 0.30f, size.height * 0.18f,
+                    size.width * 0.48f, size.height * 0.16f
+                )
+                // Bezier curve to Art School
+                path.quadraticTo(
+                    size.width * 0.65f, size.height * 0.18f,
+                    size.width * 0.80f, size.height * 0.24f
+                )
+                // Bezier curve to Badge Room
+                path.quadraticTo(
+                    size.width * 0.85f, size.height * 0.40f,
+                    size.width * 0.82f, size.height * 0.58f
+                )
+                // Bezier curve to Gift Shop
+                path.quadraticTo(
+                    size.width * 0.75f, size.height * 0.70f,
+                    size.width * 0.66f, size.height * 0.80f
+                )
+                // Bezier curve to Gallery
+                path.quadraticTo(
+                    size.width * 0.48f, size.height * 0.85f,
+                    size.width * 0.32f, size.height * 0.82f
+                )
+                // Bezier curve to AI Creator Lab
+                path.quadraticTo(
+                    size.width * 0.15f, size.height * 0.70f,
+                    size.width * 0.18f, size.height * 0.54f
+                )
+                // Bezier curve to Garden
+                path.quadraticTo(
+                    size.width * 0.30f, size.height * 0.50f,
+                    size.width * 0.48f, size.height * 0.48f
+                )
+
+                // Draw the path outline shadow (sand color)
+                drawPath(
+                    path = path,
+                    color = if (isNight) Color(0xFF334155) else Color(0xFFD7CCC8),
+                    style = Stroke(
+                        width = 18.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                )
+                // Draw the pathway itself
+                drawPath(
+                    path = path,
+                    color = if (isNight) Color(0xFF475569) else Color(0xFFF5F5F5),
+                    style = Stroke(
+                        width = 12.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                )
+                // Center dashed line of the road
+                drawPath(
+                    path = path,
+                    color = if (isNight) Color(0xFF94A3B8) else Color(0xFFFFB74D),
+                    style = Stroke(
+                        width = 2.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 16f), 0f),
+                        cap = StrokeCap.Round
+                    )
+                )
+            }
+
+            // --- Celestial Bodies depending on Time of Day (Mặt trời mỉm cười hoặc Mặt trăng khuyết lấp lánh) ---
+            if (isNight) {
+                // Moon 🌙 with ambient glow animation
+                val moonPulse by infiniteTransition.animateFloat(
+                    initialValue = 1.0f,
+                    targetValue = 1.15f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(3000, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "MoonGlow"
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 80.dp, end = 50.dp)
+                        .scale(moonPulse)
+                        .clickable {
+                            triggerVisualSound("lấp lánh", "✨🌙", 280f, 100f, Color(0xFFFBC02D))
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🌙", fontSize = 48.sp)
+                    Text("✨", fontSize = 16.sp, modifier = Modifier.offset(x = (-25).dp, y = (-15).dp))
+                    Text("⭐", fontSize = 14.sp, modifier = Modifier.offset(x = 20.dp, y = 25.dp))
+                }
+            } else {
+                // Sun ☀️ with dynamic smiling rays
+                val sunWobble by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(25000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "SunRotation"
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 80.dp, end = 50.dp)
+                        .rotate(sunWobble)
+                        .clickable {
+                            triggerVisualSound("ấm áp", "☀️💛", 280f, 100f, Color(0xFFFFB74D))
+                        }
+                ) {
+                    Text("☀️", fontSize = 54.sp)
+                }
+            }
+
+            // --- Drifting Animated Elements on the Background layer ---
+            // Clouds - Interactive: Tap to trigger magical rain!
+            Box(
+                modifier = Modifier
+                    .offset(x = cloudOffset1.dp, y = 30.dp)
+                    .clickable {
+                        triggerVisualSound("vút bay", "☁️✨", cloudOffset1 + 30f, 40f, Color(0xFF64B5F6))
+                        cloudTapCount++
+                        if (cloudTapCount >= 5) {
+                            cloudTapCount = 0
+                            if (!isCandyRainActive && !isRaining && !showRainbow) {
+                                scope.launch {
+                                    isCandyRainActive = true
+                                    speechText = "Ôi sướng thế! Cơn mưa kẹo ngọt cầu vồng 🍬🍭 lấp lánh rơi đầy đầu tụi mình kìa bé yêu ơi! 🌈🥰"
+                                    viewModel.spawnEmojiParticles(400f, 200f, "🍬", count = 15)
+                                    viewModel.spawnEmojiParticles(400f, 200f, "🍭", count = 15)
+                                    delay(7000)
+                                    isCandyRainActive = false
+                                    showRainbow = true
+                                    speechText = "Kìa bé ơi! Cầu vồng bồng bềnh bảy sắc lấp lánh xuất hiện sau cơn mưa kìa! Tuyệt vời quá! 🌈✨"
+                                    viewModel.spawnEmojiParticles(400f, 200f, "✨", count = 30)
+                                    delay(8000)
+                                    showRainbow = false
+                                    speechText = initialPandaGreeting
+                                }
+                            }
+                        } else {
+                            if (!isRaining && !isCandyRainActive && !showRainbow) {
+                                scope.launch {
+                                    isRaining = true
+                                    speechText = "Oa! Cơn mưa mát lành rơi tí tách rồi bé ơi! Tớ che ô xinh xắn che chở cho bé nhé! 🌧️☂️"
+                                    viewModel.spawnEmojiParticles(400f, 200f, "💧", count = 25)
+                                    delay(6000)
+                                    isRaining = false
+                                    showRainbow = true
+                                    speechText = "Kìa bé ơi! Cầu vồng bồng bềnh bảy sắc lấp lánh xuất hiện sau cơn mưa kìa! Tuyệt vời quá! 🌈✨"
+                                    viewModel.spawnEmojiParticles(400f, 200f, "✨", count = 30)
+                                    delay(8000)
+                                    showRainbow = false
+                                    speechText = initialPandaGreeting
+                                }
+                            }
+                        }
+                    }
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("☁️", fontSize = 58.sp, modifier = Modifier.alpha(if (isNight) 0.4f else 0.85f))
+                    Text("Chạm tớ! 👇", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (isNight) Color.White.copy(alpha = 0.5f) else Color(0xFF388E3C))
+                }
+            }
+            Text("☁️", fontSize = 42.sp, modifier = Modifier.offset(x = cloudOffset2.dp, y = 110.dp).alpha(if (isNight) 0.3f else 0.7f).clickable {
+                triggerVisualSound("bồng bềnh", "☁️🎈", cloudOffset2 + 20f, 120f, Color(0xFF90CAF9))
+            })
+
+            // Rainbow 🌈 - Beautiful, sweeping arch on screen when showRainbow is active
+            if (showRainbow) {
+                val rainbowAlpha by animateFloatAsState(targetValue = 1.0f, animationSpec = tween(1000), label = "RainbowFade")
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .align(Alignment.TopCenter)
+                        .padding(top = 70.dp)
+                        .alpha(rainbowAlpha)
+                        .clickable {
+                            triggerVisualSound("diệu kỳ", "🌈✨", 180f, 150f, Color(0xFFFF4081))
+                            if (!showUnicorn) {
+                                scope.launch {
+                                    showUnicorn = true
+                                    speechText = "Aaa! Kỳ lân phép thuật bảy màu 🦄 lấp lánh vừa bay nhảy qua bầu trời kìa bé ơi! Đẹp lung linh chưa! ✨🌈"
+                                    viewModel.spawnEmojiParticles(400f, 200f, "⭐", count = 12)
+                                    delay(4000)
+                                    speechText = initialPandaGreeting
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🌈", fontSize = 120.sp, modifier = Modifier.scale(1.8f))
+                    Text("✨ CẦU VỒNG PHÉP THUẬT ✨", fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFFFF6D00), modifier = Modifier.offset(y = 80.dp))
+                }
+            }
+
+            // Raindrop overlays when isRaining is active
+            if (isRaining) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val colCount = 8
+                    val stepW = size.width / colCount
+                    for (c in 0 until colCount) {
+                        val dropY = ((rainProgress * size.height) + (c * 150f)) % size.height
+                        val dropX = (c * stepW) + (rainProgress * 50f)
+                        drawCircle(
+                            color = Color(0xFF60A5FA),
+                            radius = 3.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(dropX, dropY),
+                            alpha = 0.6f
+                        )
+                    }
+                }
+            }
+
+            // Candy Rain overlay when isCandyRainActive is active
+            if (isCandyRainActive) {
+                // Spawn beautiful falling candies instead of rain
+                var candyRainProgress by remember { mutableStateOf(0f) }
+                LaunchedEffect(Unit) {
+                    animate(
+                        initialValue = 0f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(3000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        )
+                    ) { valVal, _ ->
+                        candyRainProgress = valVal
+                    }
+                }
+                
+                // Render 8 columns of falling candies
+                val candies = listOf("🍬", "🍭", "🍩", "🍪", "🍫", "🍬", "🍭", "🍩")
+                candies.forEachIndexed { col, emoji ->
+                    val candyY = ((candyRainProgress * 800f) + (col * 150f)) % 800f
+                    val candyX = (col * (600f / 8)) + (candyY * 0.15f)
+                    Text(
+                        emoji,
+                        fontSize = 22.sp,
+                        modifier = Modifier.offset(x = candyX.dp, y = candyY.dp)
+                    )
+                }
+            }
+
+            // Unicorn leap when showUnicorn is active
+            if (showUnicorn) {
+                var unicornProgress by remember { mutableStateOf(0f) }
+                LaunchedEffect(Unit) {
+                    animate(
+                        initialValue = 0f,
+                        targetValue = 1f,
+                        animationSpec = tween(3500, easing = LinearEasing)
+                    ) { valVal, _ ->
+                        unicornProgress = valVal
+                    }
+                }
+                Text(
+                    "🦄",
+                    fontSize = 48.sp,
+                    modifier = Modifier
+                        .offset(
+                            x = (-100).dp + (500.dp) * unicornProgress,
+                            y = 120.dp + (Math.sin(unicornProgress * Math.PI).toFloat() * -80f).dp
+                        )
+                        .scale(if (unicornProgress > 0.5f) -1.2f else 1.2f, 1.2f)
+                )
+            }
+
+            // Squirrel discovery when showSquirrel is active
+            if (showSquirrel) {
+                var squirrelOffset by remember { mutableStateOf(0f) }
+                LaunchedEffect(Unit) {
+                    animate(
+                        initialValue = 0f,
+                        targetValue = 1f,
+                        animationSpec = tween(4000, easing = LinearOutSlowInEasing)
+                    ) { valVal, _ ->
+                        squirrelOffset = valVal
+                    }
+                }
+                Text(
+                    "🐿️",
+                    fontSize = 34.sp,
+                    modifier = Modifier
+                        .offset(
+                            x = 20.dp + (260.dp * squirrelOffset),
+                            y = 350.dp + (Math.abs(Math.sin(squirrelOffset * 3 * Math.PI)).toFloat() * -40f).dp
+                        )
+                )
+            }
+
+            // Fluttering Butterfly
+            Text("🦋", fontSize = 28.sp, modifier = Modifier.offset(x = butterflyX.dp, y = butterflyY.dp).clickable {
+                triggerVisualSound("vút bay", "🦋✨", butterflyX, butterflyY, Color(0xFFF06292))
+                viewModel.spawnEmojiParticles(butterflyX * 2.5f, butterflyY * 2.5f, "✨", count = 3)
+            })
+
+            // Falling leaves
+            Text("🍃", fontSize = 18.sp, modifier = Modifier.offset(x = leafX.dp, y = leafY.dp).alpha(if (isNight) 0.4f else 0.7f).clickable {
+                triggerVisualSound("rì rào", "🍃", leafX, leafY, Color(0xFF4CAF50))
+            })
+            Text("🌸", fontSize = 16.sp, modifier = Modifier.offset(x = (leafX + 250f).dp, y = (leafY + 150f).dp).alpha(if (isNight) 0.3f else 0.6f).clickable {
+                triggerVisualSound("rơi nhẹ", "🌸", leafX + 250f, leafY + 150f, Color(0xFFFF8A80))
+            })
+
+            // Scenic Background Deco Trees & Flowers (Static details to enhance depth)
+            Text("🌲", fontSize = 36.sp, modifier = Modifier.align(Alignment.TopStart).offset(x = 10.dp, y = 90.dp).alpha(if (isNight) 0.5f else 0.8f).clickable {
+                triggerVisualSound("rì rào", "🌲🍃", 10f, 90f, Color(0xFF2E7D32))
+            })
+            Text("🌲", fontSize = 32.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 60.dp).alpha(if (isNight) 0.4f else 0.8f).clickable {
+                triggerVisualSound("rì rào", "🌲🍃", 320f, 60f, Color(0xFF2E7D32))
+            })
+            Text("🎋", fontSize = 36.sp, modifier = Modifier.align(Alignment.CenterStart).offset(x = 30.dp, y = 0.dp).alpha(if (isNight) 0.5f else 0.8f).clickable {
+                triggerVisualSound("rào rào", "🎋✨", 30f, 350f, Color(0xFF4CAF50))
+            })
+            Text("🌻", fontSize = 24.sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = 24.dp, y = (-20).dp).alpha(if (isNight) 0.5f else 1.0f).clickable {
+                triggerVisualSound("chíp chíp", "🐦🌻", 24f, 680f, Color(0xFFFFB74D))
+            })
+            Text("🌻", fontSize = 24.sp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-24).dp, y = (-40).dp).alpha(if (isNight) 0.5f else 1.0f).clickable {
+                triggerVisualSound("chíp chíp", "🐦🌻", 320f, 660f, Color(0xFFFFB74D))
+            })
+
+            // --- Interactive Map UI elements ---
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val mapW = maxWidth
+                val mapH = maxHeight
+
+                // --- PROGRESSION SYSTEM DECORATIONS (Vương Quốc phát triển theo số lượng tranh bé vẽ) ---
+                
+                // --- Living Village Interactive Task Definitions ---
+                val plantTreeTask = {
+                    if (!isPandaMoving && pandaTaskState == "IDLE" && savedDrawingsCount >= 1) {
+                        scope.launch {
+                            val tx = 0.05f
+                            val ty = 0.35f
+                            isPandaMoving = true
+                            currentRelX = tx
+                            currentRelY = ty
+                            delay(1400)
+                            isPandaMoving = false
+                            
+                            pandaTaskState = "PLANT_DIGGING"
+                            speechText = "Đợi $pandaName một xíu nhé... Tớ đang dùng xẻng đào hố đất để trồng cây xanh nè! ⛏️🌱"
+                            triggerVisualSound("bộp bộp", "⛏️🌱", tx * mapW.value, ty * mapH.value, Color(0xFF8D6E63))
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "🪨", count = 6)
+                            delay(2200)
+                            
+                            pandaTaskState = "PLANT_WATERING"
+                            speechText = "Giờ tưới nước mát lành cho mầm cây xanh lớn lên vù vù nào bé ơi! 🚿💦"
+                            triggerVisualSound("xoẹt xoẹt", "🚿💦", tx * mapW.value, ty * mapH.value, Color(0xFF29B6F6))
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "💧", count = 12)
+                            delay(2200)
+                            
+                            pandaTaskState = "PLANT_GROWING"
+                            speechText = "Yee! Cây xanh cao to lấp lánh đã mọc lên rồi nè! Bé vẽ giỏi nên làng xanh lắm! 🌳✨"
+                            triggerVisualSound("tèn ten", "🌳✨", tx * mapW.value, ty * mapH.value, Color(0xFF4CAF50))
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "🍃", count = 14)
+                            delay(2500)
+                            
+                            pandaTaskState = "IDLE"
+                            speechText = initialPandaGreeting
+                        }
+                    }
+                }
+
+                val activateFountainTask = {
+                    if (!isPandaMoving && pandaTaskState == "IDLE" && savedDrawingsCount >= 5) {
+                        scope.launch {
+                            val tx = 0.50f
+                            val ty = 0.70f
+                            isPandaMoving = true
+                            currentRelX = tx
+                            currentRelY = ty
+                            delay(1400)
+                            isPandaMoving = false
+                            
+                            pandaTaskState = "FOUNTAIN_ACTIVATE"
+                            speechText = "$pandaName đang vặn van khóa phép thuật để kích hoạt đài phun nước nha! 🔧⛲"
+                            triggerVisualSound("két két", "🔧⛲", tx * mapW.value, ty * mapH.value, Color.Gray)
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "⚙️", count = 6)
+                            delay(1800)
+                            
+                            pandaTaskState = "FOUNTAIN_SHOWING"
+                            showFountainGuests = true
+                            speechText = "Oa! Cậu nhìn xem kìa! Chim non 🐦 kéo đến uống nước, bướm hồng 🦋 đậu lại, và có cả cầu vồng tí hon nữa! ⛲🌈"
+                            triggerVisualSound("ào ào", "⛲✨", tx * mapW.value, ty * mapH.value, Color(0xFF03A9F4))
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "💧", count = 18)
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "🫧", count = 10)
+                            delay(5000)
+                            
+                            showFountainGuests = false
+                            pandaTaskState = "IDLE"
+                            speechText = initialPandaGreeting
+                        }
+                    }
+                }
+
+                val rideFerrisWheelTask = {
+                    if (!isPandaMoving && pandaTaskState == "IDLE" && savedDrawingsCount >= 7) {
+                        scope.launch {
+                            val tx = 0.88f
+                            val ty = 0.42f
+                            isPandaMoving = true
+                            currentRelX = tx
+                            currentRelY = ty
+                            delay(1400)
+                            isPandaMoving = false
+                            
+                            pandaTaskState = "FERRIS_RIDING"
+                            isPandaOnFerrisWheel = true
+                            speechText = "Tớ leo lên cabin đu quay khổng lồ đây! Vù vù... quay vòng thích quá bé ơi! 🎡🐼👋"
+                            triggerVisualSound("vù vù", "🎡✨", tx * mapW.value, ty * mapH.value, Color(0xFFFFB74D))
+                            viewModel.spawnEmojiParticles(tx * mapW.value * 2.5f, ty * mapH.value * 2.5f, "⭐", count = 8)
+                            delay(4000)
+                            
+                            pandaTaskState = "FERRIS_WAVING"
+                            speechText = "Hú hu! $pandaName đang ở trên cao nhất nè! Thấy cả xưởng vẽ luôn! 👋🐼🎡"
+                            delay(2500)
+                            
+                            isPandaOnFerrisWheel = false
+                            pandaTaskState = "IDLE"
+                            speechText = initialPandaGreeting
+                        }
+                    }
+                }
+
+                // 1. Extra Lush Forest Trees 🌳 (Enabled if savedDrawingsCount >= 1)
+                if (savedDrawingsCount >= 1) {
+                    Text(
+                        "🌳",
+                        fontSize = 32.sp,
+                        modifier = Modifier
+                            .offset(x = mapW * 0.05f, y = mapH * 0.35f)
+                            .clickable {
+                                triggerVisualSound("rì rào", "🌳🍃", mapW.value * 0.05f, mapH.value * 0.35f, Color(0xFF4CAF50))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.05f * 2.5f, mapH.value * 0.35f * 2.5f, "🍃", count = 5)
+                                treeTapCount++
+                                if (treeTapCount >= 10) {
+                                    treeTapCount = 0
+                                    scope.launch {
+                                        showSquirrel = true
+                                        speechText = "Chít chít! Một chú sóc nhỏ đáng yêu 🐿️🥜 vừa nhảy ra từ trong tán lá cây kìa bé ơi!"
+                                        viewModel.spawnEmojiParticles(mapW.value * 0.05f * 2.5f, mapH.value * 0.35f * 2.5f, "🥜", count = 8)
+                                        delay(4500)
+                                        speechText = initialPandaGreeting
+                                    }
+                                } else {
+                                    plantTreeTask()
+                                }
+                            }
+                    )
+                    Text(
+                        "🌳",
+                        fontSize = 34.sp,
+                        modifier = Modifier
+                            .offset(x = mapW * 0.08f, y = mapH * 0.65f)
+                            .clickable {
+                                triggerVisualSound("rì rào", "🌳🍃", mapW.value * 0.08f, mapH.value * 0.65f, Color(0xFF4CAF50))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.08f * 2.5f, mapH.value * 0.65f * 2.5f, "🍃", count = 5)
+                                treeTapCount++
+                                if (treeTapCount >= 10) {
+                                    treeTapCount = 0
+                                    scope.launch {
+                                        showSquirrel = true
+                                        speechText = "Chít chít! Một chú sóc nhỏ đáng yêu 🐿️🥜 vừa nhảy ra từ trong tán lá cây kìa bé ơi!"
+                                        viewModel.spawnEmojiParticles(mapW.value * 0.08f * 2.5f, mapH.value * 0.65f * 2.5f, "🥜", count = 8)
+                                        delay(4500)
+                                        speechText = initialPandaGreeting
+                                    }
+                                } else {
+                                    plantTreeTask()
+                                }
+                            }
+                    )
+                }
+
+                // 2. Blooming Flowers 🌷🌹 (Enabled if savedDrawingsCount >= 2)
+                if (savedDrawingsCount >= 2) {
+                    Text(
+                        "🌷",
+                        fontSize = 24.sp,
+                        modifier = Modifier
+                            .offset(x = mapW * 0.26f, y = mapH * 0.28f)
+                            .clickable {
+                                triggerVisualSound("thơm ngát", "🌷🌸", mapW.value * 0.26f, mapH.value * 0.28f, Color(0xFFEC407A))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.26f * 2.5f, mapH.value * 0.28f * 2.5f, "✨", count = 4)
+                            }
+                    )
+                    Text(
+                        "🌹",
+                        fontSize = 24.sp,
+                        modifier = Modifier
+                            .offset(x = mapW * 0.58f, y = mapH * 0.12f)
+                            .clickable {
+                                triggerVisualSound("bừng nở", "🌹💖", mapW.value * 0.58f, mapH.value * 0.12f, Color(0xFFE91E63))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.58f * 2.5f, mapH.value * 0.12f * 2.5f, "💖", count = 4)
+                            }
+                    )
+                }
+
+                // 3. Stepping Stones 🪨 OR Wooden Bridge 🌉 (Stepping stones if <3, Wooden Bridge if >= 3)
+                if (savedDrawingsCount < 3) {
+                    // Simple stepping stones drawn on the river intersection
+                    Row(
+                        modifier = Modifier
+                            .offset(x = mapW * 0.32f, y = mapH * 0.18f)
+                            .clickable {
+                                triggerVisualSound("bạch bạch", "🪨🐾", mapW.value * 0.34f, mapH.value * 0.19f, Color.Gray)
+                            }
+                    ) {
+                        Text("🪨", fontSize = 16.sp)
+                        Text("🪨", fontSize = 16.sp)
+                    }
+                } else {
+                    // Beautiful wooden bridge constructed across the sparkling river!
+                    Text(
+                        "🌉",
+                        fontSize = 42.sp,
+                        modifier = Modifier
+                            .offset(x = mapW * 0.32f, y = mapH * 0.17f)
+                            .clickable {
+                                triggerVisualSound("cộp cộp", "🌉🐾", mapW.value * 0.35f, mapH.value * 0.18f, Color(0xFF8D6E63))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.35f * 2.5f, mapH.value * 0.18f * 2.5f, "✨", count = 6)
+                            }
+                    )
+                }
+
+                // 4. Central Wishing Fountain ⛲ (Enabled if savedDrawingsCount >= 5)
+                if (savedDrawingsCount >= 5) {
+                    val fountainScale by infiniteTransition.animateFloat(
+                        initialValue = 0.95f,
+                        targetValue = 1.05f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1200, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "FountainBounce"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .offset(x = mapW * 0.50f, y = mapH * 0.72f)
+                            .scale(fountainScale)
+                            .clickable {
+                                triggerVisualSound("tủm tủm", "⛲💦", mapW.value * 0.54f, mapH.value * 0.74f, Color(0xFF29B6F6))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.54f * 2.5f, mapH.value * 0.74f * 2.5f, "💧", count = 8)
+                                activateFountainTask()
+                            }
+                    ) {
+                        Text("⛲", fontSize = 46.sp)
+                        // Show fountain guests (bird, butterfly, tiny rainbow) if active!
+                        if (showFountainGuests) {
+                            Text("🐦", fontSize = 18.sp, modifier = Modifier.offset(x = (-16).dp, y = 20.dp))
+                            Text("🦋", fontSize = 14.sp, modifier = Modifier.offset(x = 24.dp, y = (-12).dp))
+                            Text("🌈", fontSize = 22.sp, modifier = Modifier.offset(x = 4.dp, y = (-26).dp))
+                        }
+                    }
+                }
+
+                // 5. Spinning Star Ferris Wheel 🎡 (Enabled if savedDrawingsCount >= 7)
+                if (savedDrawingsCount >= 7) {
+                    val ferrisWheelRotation by infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(8000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "FerrisSpin"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .offset(x = mapW * 0.88f, y = mapH * 0.42f)
+                            .clickable {
+                                triggerVisualSound("vù vù", "🎡✨", mapW.value * 0.92f, mapH.value * 0.45f, Color(0xFFFFB74D))
+                                viewModel.spawnEmojiParticles(mapW.value * 0.92f * 2.5f, mapH.value * 0.45f * 2.5f, "🌟", count = 6)
+                                rideFerrisWheelTask()
+                            }
+                    ) {
+                        Text(
+                            "🎡",
+                            fontSize = 54.sp,
+                            modifier = Modifier.rotate(ferrisWheelRotation)
+                        )
+                        // If riding, draw tiny waving panda face on the wheel!
+                        if (isPandaOnFerrisWheel) {
+                            val angleRad = (ferrisWheelRotation * Math.PI / 180).toFloat()
+                            val riderX = 18.dp + (Math.cos(angleRad.toDouble()).toFloat() * 18).dp
+                            val riderY = 18.dp + (Math.sin(angleRad.toDouble()).toFloat() * 18).dp
+                            Text(
+                                "🐼👋",
+                                fontSize = 16.sp,
+                                modifier = Modifier.offset(x = riderX, y = riderY)
+                            )
+                        }
+                    }
+                }
+
+                // --- Swimming Duck in the Winding River ---
+                val duckProgress by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(18000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "SwimmingDuck"
+                )
+                val duckY = duckProgress
+                val duckX = if (duckY < 0.6f) {
+                    0.38f + (duckY / 0.6f) * 0.05f
+                } else {
+                    0.43f - ((duckY - 0.6f) / 0.4f) * 0.08f
+                }
+                
+                // Render Mama Duck 🦆
+                Box(
+                    modifier = Modifier
+                        .offset(x = mapW * duckX, y = mapH * duckY)
+                        .clickable {
+                            triggerVisualSound("cạp cạp", "🦆💧", mapW.value * duckX, mapH.value * duckY, Color(0xFFFFA726))
+                            viewModel.spawnEmojiParticles(mapW.value * duckX * 2.5f, mapH.value * duckY * 2.5f, "💧", count = 5)
+                            
+                            // Tiny Story & Toss Bread!
+                            duckTapCount++
+                            if (duckTapCount == 1) {
+                                scope.launch {
+                                    showDuckBabies = true
+                                    speechText = "Quạc quạc! 🦆 Ôi vui quá, đàn con bé bỏng đã tìm thấy mẹ rồi! Cảm ơn bé $childName nhiều nha! ❤️🐾"
+                                    viewModel.spawnEmojiParticles(mapW.value * duckX * 2.5f, mapH.value * duckY * 2.5f, "💖", count = 8)
+                                    delay(4000)
+                                    speechText = initialPandaGreeting
+                                }
+                            } else {
+                                // Bread Toss animation!
+                                breadStartX = mapW.value * animatedRelX
+                                breadStartY = mapH.value * animatedRelY
+                                breadEndX = mapW.value * duckX
+                                breadEndY = mapH.value * duckY
+                                isBreadFlying = true
+                            }
+                        }
+                ) {
+                    Text("🦆", fontSize = 24.sp)
+                }
+
+                // Render Ducklings swimming behind Mama Duck
+                if (showDuckBabies) {
+                    for (i in 1..3) {
+                        val lagProgress = (duckProgress - (i * 0.04f) + 1.0f) % 1.0f
+                        val babyY = lagProgress
+                        val babyX = if (babyY < 0.6f) {
+                            0.38f + (babyY / 0.6f) * 0.05f
+                        } else {
+                            0.43f - ((babyY - 0.6f) / 0.4f) * 0.08f
+                        }
+                        Text(
+                            "🦆",
+                            fontSize = 13.sp, // tiny size for baby ducklings
+                            modifier = Modifier
+                                .offset(x = mapW * babyX, y = mapH * babyY)
+                                .clickable {
+                                    triggerVisualSound("bíp bíp", "🦆✨", mapW.value * babyX, mapH.value * babyY, Color(0xFFFFF176))
+                                    viewModel.spawnEmojiParticles(mapW.value * babyX * 2.5f, mapH.value * babyY * 2.5f, "✨", count = 3)
+                                }
+                        )
+                    }
+                }
+
+                // Floating flying bread element
+                if (isBreadFlying) {
+                    val currentBreadX = breadStartX + (breadEndX - breadStartX) * breadProgress
+                    val currentBreadY = breadStartY + (breadEndY - breadStartY) * breadProgress - (Math.sin(breadProgress.toDouble() * Math.PI).toFloat() * 60f)
+                    Text(
+                        "🍞",
+                        fontSize = 20.sp,
+                        modifier = Modifier.offset(x = currentBreadX.dp, y = currentBreadY.dp)
+                    )
+                }
+
+                // Draw all building nodes
+                destinations.forEach { dest ->
+                    val nodeX = mapW * dest.relativeX - 38.dp
+                    val nodeY = mapH * dest.relativeY - 48.dp
+
+                    // Night light overlay box around nodes to show glowing windows
+                    val isGlowing = isNight && (dest.id == "home_action" || dest.id == "museum" || dest.id == "ai_room")
+
+                    Box(modifier = Modifier.offset(x = nodeX, y = nodeY)) {
+                        // Golden glowing ring for evening/night mode cozy feel
+                        if (isGlowing) {
+                            val glowPulse by infiniteTransition.animateFloat(
+                                initialValue = 0.4f,
+                                targetValue = 0.9f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1500, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "GlowRing"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .offset(x = (-4).dp, y = (-4).dp)
+                                    .background(Color(0xFFFEF08A).copy(alpha = glowPulse * 0.4f), CircleShape)
+                            )
+                        }
+
+                        // Map Node
+                        MapBuildingNode(
+                            destination = dest,
+                            onClick = {
+                                if (!isPandaMoving) {
+                                    targetDestination = dest
+                                    isPandaMoving = true
+                                    
+                                    // Say something cute when traveling
+                                    speechText = if (dest.isHomeAction) {
+                                        "Mình cùng đi xem bảng cài đặt vương quốc nhé! 🏡🐾"
+                                    } else {
+                                        "Đang chạy vội vàng tới ${dest.title}... 🐼💨"
+                                    }
+                                    
+                                    // Trigger dynamic background particles on tap
+                                    viewModel.spawnEmojiParticles(
+                                        x = (dest.relativeX * mapW.value * 2),
+                                        y = (dest.relativeY * mapH.value * 2),
+                                        emoji = "✨",
+                                        count = 5
+                                    )
+                                }
+                            }
+                        )
+
+                        // --- Micro Interactions / Mini Assets on Nodes ---
+                        if (dest.id == "ai_room") {
+                            // Rotating Gear over Robot AI Lab
+                            val gearRotation by infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 360f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(4000, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "GearTurn"
+                            )
+                            Text(
+                                text = "⚙️",
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 5.dp, y = (-8).dp)
+                                    .rotate(gearRotation)
+                            )
+                            // Blinking lights red/green
+                            val isLedGreen = timeSeconds % 1.5f > 0.75f
+                            Text(
+                                text = if (isLedGreen) "🟢" else "🔴",
+                                fontSize = 8.sp,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .offset(x = (-4).dp, y = (-2).dp)
+                            )
+                        }
+
+                        if (dest.id == "home_action" && isNight) {
+                            // Warm fireplace smoke emoji puff
+                            val smokePulse by infiniteTransition.animateFloat(
+                                initialValue = 0.5f,
+                                targetValue = 1.3f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(2000, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "ChimneySmoke"
+                            )
+                            Text(
+                                text = "💨",
+                                fontSize = 11.sp,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .offset(x = 10.dp, y = (-22).dp)
+                                    .scale(smokePulse)
+                                    .alpha(1.5f - smokePulse)
+                            )
+                        }
+                    }
+                }
+
+                // --- The Adorable Traveling Panda Character ---
+                val pandaX = mapW * animatedRelX - 35.dp
+                val pandaY = mapH * animatedRelY - 65.dp
+
+                // Determine appropriate emoji of Panda
+                val currentPandaEmoji = when {
+                    isPandaOnFerrisWheel -> "🎡"
+                    pandaTaskState == "PLANT_DIGGING" -> "⛏️"
+                    pandaTaskState == "PLANT_WATERING" -> "🚿"
+                    pandaTaskState == "PLANT_GROWING" -> "🌱"
+                    isPandaMoving -> "🐼💨" // Panda running fast
+                    isRaining -> "🐼☂️" // Panda with pink/blue umbrella
+                    else -> scheduleEmoji // Custom emoji depending on hour of day
+                }
+
+                // Fade out Panda if riding Ferris Wheel
+                val pandaAlpha by animateFloatAsState(
+                    targetValue = if (isPandaOnFerrisWheel) 0f else 1f,
+                    animationSpec = tween(400),
+                    label = "PandaAlpha"
+                )
+
+                if (pandaAlpha > 0.05f) {
+                    Column(
+                        modifier = Modifier
+                            .offset(x = pandaX, y = pandaY)
+                            .width(130.dp)
+                            .alpha(pandaAlpha),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Speech bubble right above Panda's head
+                        Box(
+                            modifier = Modifier
+                                .padding(bottom = 2.dp)
+                                .background(Color.White, RoundedCornerShape(14.dp))
+                                .border(2.dp, Color(0xFF4CAF50), RoundedCornerShape(14.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isPandaMoving) "Chờ tớ nhé! 🐾" else speechText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF2E7D32),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        
+                        // Cute Pointer Indicator
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .scale(currentWobbleScale)
+                                .rotate(currentWobbleRotation)
+                                .background(Color.White, CircleShape)
+                                .border(3.dp, Color(0xFF2E7D32), CircleShape)
+                                .clickable {
+                                    scope.launch {
+                                        speechText = pandaSayings.random()
+                                        viewModel.spawnEmojiParticles(400f, 300f, "⭐", count = 6)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(currentPandaEmoji, fontSize = 28.sp)
+                        }
+                    }
+                }
+
+                // --- On-screen Floating Visual Sound design overlays (Toca Boca-style) ---
+                visualSounds.forEach { snd ->
+                    key(snd.id) {
+                        var yOffset by remember { mutableStateOf(0f) }
+                        var alpha by remember { mutableStateOf(1f) }
+                        LaunchedEffect(Unit) {
+                            animate(
+                                initialValue = 0f,
+                                targetValue = -65f,
+                                animationSpec = tween(1200, easing = LinearOutSlowInEasing)
+                            ) { value, _ ->
+                                yOffset = value
+                                alpha = 1f - (value / -65f)
+                            }
+                            visualSounds = visualSounds.filter { it.id != snd.id }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .offset(x = snd.x.dp, y = (snd.y + yOffset).dp)
+                                .alpha(alpha)
+                                .background(snd.color, RoundedCornerShape(12.dp))
+                                .border(2.dp, Color.White, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .shadow(2.dp, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(snd.emoji, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(snd.text, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Settings / Customize profile gear (Floating button on top) ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 40.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(top = 40.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("☁️", fontSize = 48.sp, modifier = Modifier.padding(start = 24.dp).alpha(0.6f))
-            Text("🎈", fontSize = 36.sp, modifier = Modifier.padding(end = 40.dp).alpha(0.6f))
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Application logo, Title & Settings Button Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Wood-styled Toy Title Sign
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF81C784), RoundedCornerShape(16.dp))
+                    .border(3.dp, Color(0xFF2E7D32), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🏡 ", fontSize = 28.sp)
+                    Text("🏡 ", fontSize = 18.sp)
                     Text(
                         text = "VƯƠNG QUỐC $pandaName".uppercase(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF2E7D32),
-                        letterSpacing = 1.sp
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
                     )
-                    Text(" 🐼", fontSize = 28.sp)
-                }
-
-                var showSettingsDialog by remember { mutableStateOf(false) }
-
-                IconButton(
-                    onClick = { showSettingsDialog = true },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(Color.White, CircleShape)
-                        .border(1.5.dp, Color(0xFF81C784), CircleShape)
-                        .shadow(2.dp, CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Cài đặt thông tin",
-                        tint = Color(0xFF2E7D32),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                if (showSettingsDialog) {
-                    var tempChildName by remember { mutableStateOf(childName) }
-                    var tempChildAge by remember { mutableStateOf(childAge) }
-                    var tempPandaName by remember { mutableStateOf(pandaName) }
-
-                    AlertDialog(
-                        onDismissRequest = { showSettingsDialog = false },
-                        title = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("⚙️ ", fontSize = 24.sp)
-                                Text("Cài Đặt Thông Tin Bé", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                        },
-                        text = {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "Nhập thông tin để cá nhân hóa thế giới vẽ tranh của bé nhé!",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-
-                                OutlinedTextField(
-                                    value = tempChildName,
-                                    onValueChange = { tempChildName = it },
-                                    label = { Text("Biệt danh/Tên của bé") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                OutlinedTextField(
-                                    value = tempChildAge,
-                                    onValueChange = { tempChildAge = it },
-                                    label = { Text("Tuổi của bé") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                OutlinedTextField(
-                                    value = tempPandaName,
-                                    onValueChange = { tempPandaName = it },
-                                    label = { Text("Tên gọi chú Gấu Trúc") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    viewModel.setChildName(tempChildName)
-                                    viewModel.setChildAge(tempChildAge)
-                                    viewModel.setPandaName(tempPandaName)
-                                    showSettingsDialog = false
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                            ) {
-                                Text("Lưu Lại", fontWeight = FontWeight.Bold)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showSettingsDialog = false }) {
-                                Text("Hủy", color = Color.Gray)
-                            }
-                        },
-                        shape = RoundedCornerShape(24.dp)
-                    )
+                    Text(" 🐼", fontSize = 18.sp)
                 }
             }
 
+            // Settings button
+            IconButton(
+                onClick = { showSettingsDialog = true },
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color(0xFFFFB74D), CircleShape)
+                    .border(2.5.dp, Color(0xFFE65100), CircleShape)
+                    .shadow(3.dp, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Cài đặt thông tin",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // --- Custom Settings Dialog (ToyPopup) ---
+        if (showSettingsDialog) {
+            var tempChildName by remember { mutableStateOf(childName) }
+            var tempChildAge by remember { mutableStateOf(childAge) }
+            var tempPandaName by remember { mutableStateOf(pandaName) }
+            val customApiKeyFlow by viewModel.customGeminiApiKey.collectAsState()
+            var tempCustomApiKey by remember { mutableStateOf(customApiKeyFlow) }
+
+            ToyPopup(
+                onDismissRequest = { showSettingsDialog = false },
+                title = "Cài Đặt Vương Quốc",
+                emoji = "⚙️",
+                borderColor = Color(0xFFFBC02D),
+                confirmButton = {
+                    BubbleButton(
+                        onClick = {
+                            viewModel.setChildName(tempChildName)
+                            viewModel.setChildAge(tempChildAge)
+                            viewModel.setPandaName(tempPandaName)
+                            viewModel.setCustomGeminiApiKey(tempCustomApiKey)
+                            showSettingsDialog = false
+                        },
+                        backgroundColor = Color(0xFF4CAF50),
+                        borderColor = Color(0xFF2E7D32)
+                    ) {
+                        Text("Lưu Lại", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSettingsDialog = false }) {
+                        Text("Hủy bỏ", color = Color.Gray, fontWeight = FontWeight.Bold)
+                    }
+                }
+            ) {
+                Text(
+                    text = "Hãy nhập thông tin để cá nhân hóa vương quốc diệu kỳ của bé yêu nhé!",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+
+                OutlinedTextField(
+                    value = tempChildName,
+                    onValueChange = { tempChildName = it },
+                    label = { Text("Biệt danh/Tên của bé") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = tempChildAge,
+                    onValueChange = { tempChildAge = it },
+                    label = { Text("Tuổi của bé") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = tempPandaName,
+                    onValueChange = { tempPandaName = it },
+                    label = { Text("Tên chú Gấu Trúc") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = tempCustomApiKey,
+                    onValueChange = { tempCustomApiKey = it },
+                    label = { Text("Mã API Key (Gemini AI)") },
+                    placeholder = { Text("Nhập API Key để mở khóa Vẽ AI tự do...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+// --- Supporting data classes and components ---
+
+data class VillageDestination(
+    val id: String,
+    val title: String,
+    val description: String,
+    val emoji: String,
+    val relativeX: Float,
+    val relativeY: Float,
+    val bgColor: Color,
+    val borderColor: Color,
+    val isHomeAction: Boolean = false
+)
+
+@Composable
+fun MapBuildingNode(
+    destination: VillageDestination,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val pressScale by animateFloatAsState(targetValue = if (isPressed) 0.85f else 1.0f, label = "NodePress")
+
+    Column(
+        modifier = modifier
+            .scale(pressScale)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onClick() }
+                )
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Glowing Background/Shadow pulse
+        Box(
+            modifier = Modifier
+                .size(68.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Main Node
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .background(destination.bgColor, CircleShape)
+                    .border(3.dp, destination.borderColor, CircleShape)
+                    .shadow(4.dp, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(destination.emoji, fontSize = 32.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Cute Wood/Paper signboard
+        Box(
+            modifier = Modifier
+                .background(Color(0xFFFFFDF0), RoundedCornerShape(10.dp))
+                .border(2.dp, destination.borderColor, RoundedCornerShape(10.dp))
+                .padding(horizontal = 8.dp, vertical = 3.dp)
+                .shadow(1.dp, RoundedCornerShape(10.dp))
+        ) {
             Text(
-                text = "Thế giới hoạt hình diệu kỳ dành cho bé yêu và gia đình",
+                text = destination.title,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF558B2F),
-                modifier = Modifier.align(Alignment.Start).padding(start = 4.dp, bottom = 12.dp)
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF5D4037)
             )
-
-            if (isLandscape) {
-                // Adaptive side-by-side design for widescreen / landscape / tablet
-                Row(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Left Column: Interactive speaking Panda box
-                    Box(
-                        modifier = Modifier
-                            .weight(0.38f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(24.dp))
-                                .border(3.dp, Color(0xFF81C784), RoundedCornerShape(24.dp))
-                                .padding(12.dp)
-                                .clickable {
-                                    scope.launch {
-                                        pandaScale = 1.2f
-                                        delay(120)
-                                        pandaScale = 1.0f
-                                        speechText = pandaSayings.random()
-                                        viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 6)
-                                        viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 6)
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(70.dp)
-                                    .scale(pandaScale)
-                                    .background(Color(0xFFE8F5E9), CircleShape)
-                                    .border(2.dp, Color(0xFF4CAF50), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("🐼", fontSize = 42.sp)
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = "$pandaName trò chuyện 💬",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF388E3C)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = speechText,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color(0xFF2E7D32),
-                                    lineHeight = 16.sp,
-                                    maxLines = 4,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-
-                    // Right Column: Room grid selection cards
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 140.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier
-                            .weight(0.62f)
-                            .fillMaxHeight()
-                    ) {
-                        item {
-                            RoomCard(
-                                title = "Xưởng Vẽ Mỹ Thuật",
-                                description = "Cọ màu phép thuật & hình dán",
-                                emoji = "🎨",
-                                backgroundColor = Color(0xFFFFEBEE),
-                                borderColor = Color(0xFFE57373),
-                                onClick = { onRoomChange("studio") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Lớp Học Vẽ Tranh",
-                                description = "Học vẽ từng nét & luyện theo tuổi",
-                                emoji = "🏫",
-                                backgroundColor = Color(0xFFE8EAF6),
-                                borderColor = Color(0xFF7986CB),
-                                onClick = { onRoomChange("drawing_class") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Phòng Robot AI",
-                                description = "Gợi ý nét vẽ phác thảo kỳ diệu",
-                                emoji = "🤖",
-                                backgroundColor = Color(0xFFE0F7FA),
-                                borderColor = Color(0xFF4DD0E1),
-                                onClick = { onRoomChange("ai_room") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Viện Bảo Tàng Tranh",
-                                description = "Trưng bày tranh vẽ lộng lẫy",
-                                emoji = "🏛️",
-                                backgroundColor = Color(0xFFFFF8E1),
-                                borderColor = Color(0xFFFFD54F),
-                                onClick = { onRoomChange("museum") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Bức Tường Vinh Danh",
-                                description = "Treo 5 huy hiệu lấp lánh bé đạt",
-                                emoji = "🏆",
-                                backgroundColor = Color(0xFFF3E5F5),
-                                borderColor = Color(0xFFBA68C8),
-                                onClick = { onRoomChange("badge_room") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Hộp Quà May Mắn",
-                                description = "Mở hộp quà nhận cọ vẽ siêu hiếm",
-                                emoji = "🎁",
-                                backgroundColor = Color(0xFFEFEBE9),
-                                borderColor = Color(0xFFA1887F),
-                                onClick = { onRoomChange("gift_room") }
-                            )
-                        }
-                        item {
-                            RoomCard(
-                                title = "Khu Vườn Panda",
-                                description = "Cho Panda ăn trúc để lớn khôn",
-                                emoji = "🌳",
-                                backgroundColor = Color(0xFFE8F5E9),
-                                borderColor = Color(0xFF81C784),
-                                onClick = { onRoomChange("garden") }
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Portrait Layout (Original vertical arrangement)
-                // Large interactive Panda Béo speaking box
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
-                        .border(3.dp, Color(0xFF81C784), RoundedCornerShape(24.dp))
-                        .padding(16.dp)
-                        .clickable {
-                            scope.launch {
-                                // Wobble animation
-                                pandaScale = 1.2f
-                                delay(120)
-                                pandaScale = 0.9f
-                                delay(100)
-                                pandaScale = 1.0f
-
-                                // Random message
-                                speechText = pandaSayings.random()
-
-                                // Spawn beautiful sparkles
-                                viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 6)
-                                viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 6)
-                            }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(90.dp)
-                            .scale(pandaScale)
-                            .background(Color(0xFFE8F5E9), CircleShape)
-                            .border(2.dp, Color(0xFF4CAF50), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🐼", fontSize = 52.sp)
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "$pandaName trò chuyện 💬",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF388E3C)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = speechText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF2E7D32),
-                            lineHeight = 18.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // 6 Beautiful Room Selection Cards
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 140.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    item {
-                        RoomCard(
-                            title = "Xưởng Vẽ Mỹ Thuật",
-                            description = "Cọ màu phép thuật & hình dán ngộ nghĩnh",
-                            emoji = "🎨",
-                            backgroundColor = Color(0xFFFFEBEE),
-                            borderColor = Color(0xFFE57373),
-                            onClick = { onRoomChange("studio") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Lớp Học Vẽ Tranh",
-                            description = "Học vẽ từng nét & luyện theo tuổi",
-                            emoji = "🏫",
-                            backgroundColor = Color(0xFFE8EAF6),
-                            borderColor = Color(0xFF7986CB),
-                            onClick = { onRoomChange("drawing_class") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Phòng Robot AI",
-                            description = "Nhờ Robot AI vẽ phác thảo kỳ diệu",
-                            emoji = "🤖",
-                            backgroundColor = Color(0xFFE0F7FA),
-                            borderColor = Color(0xFF4DD0E1),
-                            onClick = { onRoomChange("ai_room") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Viện Bảo Tàng Tranh",
-                            description = "Trưng bày tranh vẽ lộng lẫy của bé",
-                            emoji = "🏛️",
-                            backgroundColor = Color(0xFFFFF8E1),
-                            borderColor = Color(0xFFFFD54F),
-                            onClick = { onRoomChange("museum") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Bức Tường Vinh Danh",
-                            description = "Nơi treo 5 huy hiệu lấp lánh bé đạt được",
-                            emoji = "🏆",
-                            backgroundColor = Color(0xFFF3E5F5),
-                            borderColor = Color(0xFFBA68C8),
-                            onClick = { onRoomChange("badge_room") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Hộp Quà May Mắn",
-                            description = "Mở hộp quà mỗi ngày nhận cọ vẽ siêu hiếm",
-                            emoji = "🎁",
-                            backgroundColor = Color(0xFFEFEBE9),
-                            borderColor = Color(0xFFA1887F),
-                            onClick = { onRoomChange("gift_room") }
-                        )
-                    }
-                    item {
-                        RoomCard(
-                            title = "Khu Vườn Panda",
-                            description = "Cho Panda ăn trúc để lớn khôn từng ngày",
-                            emoji = "🌳",
-                            backgroundColor = Color(0xFFE8F5E9),
-                            borderColor = Color(0xFF81C784),
-                            onClick = { onRoomChange("garden") }
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -1424,16 +2521,13 @@ fun PandaGiftRoom(
             Spacer(modifier = Modifier.height(40.dp))
 
             if (isOpened) {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(3.dp, Color(0xFFFF9100), RoundedCornerShape(24.dp))
-                        .shadow(4.dp)
+                ToyCard(
+                    borderColor = Color(0xFFFF9100),
+                    shadowColor = Color(0xFFFFE0B2),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("CONG-RA-TỦ-LỆT! 🎉", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFFF6D00))
@@ -1446,12 +2540,13 @@ fun PandaGiftRoom(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
+                        BubbleButton(
                             onClick = {
                                 isOpened = false
                                 rewardText = ""
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100))
+                            backgroundColor = Color(0xFFE65100),
+                            borderColor = Color(0xFFB53D00)
                         ) {
                             Text("Chơi Lại Nữa 🎁", color = Color.White, fontWeight = FontWeight.Bold)
                         }
@@ -1590,15 +2685,14 @@ fun PandaGarden(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Status plate
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+            ToyCard(
+                borderColor = Color(0xFF4CAF50),
+                shadowColor = Color(0xFFC8E6C9),
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
-                    .border(2.dp, Color(0xFF4CAF50), RoundedCornerShape(16.dp))
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -1620,7 +2714,7 @@ fun PandaGarden(
             Spacer(modifier = Modifier.height(30.dp))
 
             // Action: Feed the Panda!
-            Button(
+            BubbleButton(
                 onClick = {
                     scope.launch {
                         pandaScale = 1.25f
@@ -1634,12 +2728,10 @@ fun PandaGarden(
                         viewModel.setMascotMessage("Nhoàm nhoàm... Trúc vườn ngọt lịm ngọt lịm! Cảm ơn cậu đã chăm sóc tớ nhé! 🥰🎋🐼")
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                shape = RoundedCornerShape(20.dp),
+                backgroundColor = Color(0xFF4CAF50),
+                borderColor = Color(0xFF2E7D32),
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
-                    .height(48.dp)
-                    .shadow(3.dp, RoundedCornerShape(20.dp))
             ) {
                 Text("Cho Panda Ăn Trúc 🎋", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }

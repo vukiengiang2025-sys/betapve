@@ -1,8 +1,9 @@
 package com.example
 
 import android.content.Context
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -60,7 +61,9 @@ interface GeminiApiService {
     ): GeminiResponse
 }
 
-class DrawingViewModel : ViewModel() {
+class DrawingViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("rainbow_paint_prefs", Context.MODE_PRIVATE)
 
     // Current strokes drawn on the canvas
     private val _strokes = MutableStateFlow<List<DrawingStroke>>(emptyList())
@@ -126,6 +129,7 @@ class DrawingViewModel : ViewModel() {
 
     fun setCustomGeminiApiKey(key: String) {
         _customGeminiApiKey.value = key
+        prefs.edit().putString("custom_gemini_api_key", key).apply()
     }
 
     private val _timeLimitMinutes = MutableStateFlow(0) // 0: Unlimited screen time
@@ -202,10 +206,12 @@ class DrawingViewModel : ViewModel() {
 
     fun setChildName(name: String) {
         _childName.value = name
+        prefs.edit().putString("child_name", name).apply()
     }
 
     fun setChildAge(age: String) {
         _childAge.value = age
+        prefs.edit().putString("child_age", age).apply()
         // Apply default adaptive settings depending on age
         val ageVal = age.toIntOrNull() ?: 4
         if (ageVal <= 3) {
@@ -220,14 +226,17 @@ class DrawingViewModel : ViewModel() {
 
     fun setPandaName(name: String) {
         _pandaName.value = name
+        prefs.edit().putString("panda_name", name).apply()
     }
 
     fun setAiFreeFormAllowed(allowed: Boolean) {
         _isAiFreeFormAllowed.value = allowed
+        prefs.edit().putBoolean("is_ai_free_form_allowed", allowed).apply()
     }
 
     fun setTimeLimitMinutes(minutes: Int) {
         _timeLimitMinutes.value = minutes
+        prefs.edit().putInt("time_limit_minutes", minutes).apply()
         if (minutes == 0) {
             _isTimeLimitReached.value = false
         } else {
@@ -306,6 +315,13 @@ class DrawingViewModel : ViewModel() {
     private val geminiService = retrofit.create(GeminiApiService::class.java)
 
     init {
+        _childName.value = prefs.getString("child_name", "Bé Bún") ?: "Bé Bún"
+        _childAge.value = prefs.getString("child_age", "4") ?: "4"
+        _pandaName.value = prefs.getString("panda_name", "Panda Béo") ?: "Panda Béo"
+        _customGeminiApiKey.value = prefs.getString("custom_gemini_api_key", "") ?: ""
+        _isAiFreeFormAllowed.value = prefs.getBoolean("is_ai_free_form_allowed", false)
+        _timeLimitMinutes.value = prefs.getInt("time_limit_minutes", 0)
+
         // Load default mock/preset saved drawings to showcase the gallery
         loadPresetSavedDrawings()
         // Initialize achievement badge book
