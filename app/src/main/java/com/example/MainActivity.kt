@@ -104,6 +104,7 @@ fun DrawingPlayground(
     var showGalleryDrawer by remember { mutableStateOf(false) }
     var showBadgesDialog by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf(0) } // 0: Màu sắc, 1: Cọ vẽ, 2: Hình dán, 3: Vẽ mẫu, 4: Vẽ AI
+    var activeRoom by remember { mutableStateOf("home") }
 
     // --- Parent Gate States ---
     var showParentGateDialog by remember { mutableStateOf(false) }
@@ -193,6 +194,27 @@ fun DrawingPlayground(
     ) {
         val isTabletLayout = maxWidth > 650.dp
 
+        if (activeRoom != "studio") {
+            PandaWorldHome(
+                activeRoom = activeRoom,
+                onRoomChange = { activeRoom = it },
+                viewModel = viewModel,
+                canvasWidth = canvasWidth,
+                canvasHeight = canvasHeight,
+                context = context,
+                savedDrawings = savedDrawings,
+                badges = badges,
+                aiPromptText = aiPromptText,
+                onAiPromptChange = { aiPromptText = it },
+                quickAiPrompts = quickAiPrompts,
+                isGeneratingAi = isGeneratingAi,
+                mascotMessage = mascotMessage,
+                onSaveTitleInput = { saveTitleInput = it },
+                onShowSaveDialog = { showSaveDialog = it }
+            )
+            return@BoxWithConstraints
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             
             // --- TOP HEADER: Logo, Name & Menu Options ---
@@ -229,6 +251,18 @@ fun DrawingPlayground(
 
                 // Action controls row (Rounded, spacious buttons)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Home lobby button
+                    IconButton(
+                        onClick = { activeRoom = "home" },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFE8F5E9), CircleShape)
+                            .border(1.5.dp, Color(0xFF4CAF50), CircleShape)
+                            .shadow(1.dp, CircleShape)
+                    ) {
+                        Text("🏡", fontSize = 18.sp)
+                    }
+
                     // Achievements Badge Book Button
                     IconButton(
                         onClick = { showBadgesDialog = true },
@@ -1104,8 +1138,8 @@ fun DrawingPlayground(
                     }
                 }
             }
-            }
         }
+    }
 
         // --- DIALOG 1: Clean/Reset Confirm Dialog ---
         if (showClearConfirm) {
