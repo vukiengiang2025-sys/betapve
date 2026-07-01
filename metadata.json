@@ -1,0 +1,6 @@
+{
+  "name": "Bé Tập Vẽ Tô Màu",
+  "description": "Ứng dụng vẽ tranh và tô màu đáng yêu dành cho bé với nhiều màu sắc sinh động và nhãn dán dễ thương.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
