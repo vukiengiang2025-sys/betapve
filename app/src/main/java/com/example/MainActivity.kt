@@ -217,143 +217,183 @@ fun DrawingPlayground(
 
         Column(modifier = Modifier.fillMaxSize()) {
             
-            // --- TOP HEADER: Logo, Name & Menu Options ---
-            Row(
+            // --- TOP HEADER: Logo, Name & Menu Options (Adaptive Column & LazyRow Action Bar) ---
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
-                // Playful App Title
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Bé Họa Sĩ ",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFF4081)
+                            )
+                            Text(
+                                text = "Magic 🌟",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2979FF)
+                            )
+                        }
                         Text(
-                            text = "Bé Họa Sĩ ",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFFF4081)
-                        )
-                        Text(
-                            text = "Magic 🌟",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2979FF)
+                            text = "Thỏa sức vẽ vời & tô màu sáng tạo",
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
                         )
                     }
+
+                    // Adaptive kid profile personalization badge
+                    val childName by viewModel.childName.collectAsState()
+                    val childAge by viewModel.childAge.collectAsState()
+                    val pandaName by viewModel.pandaName.collectAsState()
                     Text(
-                        text = "Thỏa sức vẽ vời & tô màu sáng tạo",
+                        text = "🎨 Bé $childName ($childAge t) & $pandaName",
                         fontSize = 11.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E7D32),
+                        modifier = Modifier
+                            .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFF81C784), RoundedCornerShape(12.dp))
+                            .padding(vertical = 4.dp, horizontal = 8.dp)
                     )
                 }
 
-                // Action controls row (Rounded, spacious buttons)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Home lobby button
-                    IconButton(
-                        onClick = { activeRoom = "home" },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFE8F5E9), CircleShape)
-                            .border(1.5.dp, Color(0xFF4CAF50), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                    ) {
-                        Text("🏡", fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Action controls row (Using LazyRow to make it completely scrollable and immune to squishing or overlapping)
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    item {
+                        // Home lobby button
+                        IconButton(
+                            onClick = { activeRoom = "home" },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFE8F5E9), CircleShape)
+                                .border(1.5.dp, Color(0xFF4CAF50), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                        ) {
+                            Text("🏡", fontSize = 18.sp)
+                        }
                     }
 
-                    // Achievements Badge Book Button
-                    IconButton(
-                        onClick = { showBadgesDialog = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFFFF9C4), CircleShape)
-                            .border(1.5.dp, Color(0xFFFBC02D), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                    ) {
-                        Text("🏅", fontSize = 18.sp)
+                    item {
+                        // Achievements Badge Book Button
+                        IconButton(
+                            onClick = { showBadgesDialog = true },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFFFF9C4), CircleShape)
+                                .border(1.5.dp, Color(0xFFFBC02D), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                        ) {
+                            Text("🏅", fontSize = 18.sp)
+                        }
                     }
 
-                    // Undo
-                    IconButton(
-                        onClick = { viewModel.undo() },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color.White, CircleShape)
-                            .shadow(1.dp, CircleShape)
-                            .testTag("undo_button")
-                    ) {
-                        Text("↩️", fontSize = 16.sp)
+                    item {
+                        // Undo
+                        IconButton(
+                            onClick = { viewModel.undo() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color.White, CircleShape)
+                                .shadow(1.dp, CircleShape)
+                                .testTag("undo_button")
+                        ) {
+                            Text("↩️", fontSize = 16.sp)
+                        }
                     }
 
-                    // Redo
-                    IconButton(
-                        onClick = { viewModel.redo() },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color.White, CircleShape)
-                            .shadow(1.dp, CircleShape)
-                            .testTag("redo_button")
-                    ) {
-                        Text("↪️", fontSize = 16.sp)
+                    item {
+                        // Redo
+                        IconButton(
+                            onClick = { viewModel.redo() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color.White, CircleShape)
+                                .shadow(1.dp, CircleShape)
+                                .testTag("redo_button")
+                        ) {
+                            Text("↪️", fontSize = 16.sp)
+                        }
                     }
 
-                    // Clean Screen
-                    IconButton(
-                        onClick = { showClearConfirm = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFFFEBEE), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                            .testTag("clear_button")
-                    ) {
-                        Text("🧹", fontSize = 16.sp)
+                    item {
+                        // Clean Screen
+                        IconButton(
+                            onClick = { showClearConfirm = true },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFFFEBEE), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                                .testTag("clear_button")
+                        ) {
+                            Text("🧹", fontSize = 16.sp)
+                        }
                     }
 
-                    // Save To Album
-                    IconButton(
-                        onClick = {
-                            saveTitleInput = ""
-                            showSaveDialog = true
-                        },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFE8F5E9), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                            .testTag("save_button")
-                    ) {
-                        Text("💾", fontSize = 16.sp)
+                    item {
+                        // Save To Album
+                        IconButton(
+                            onClick = {
+                                saveTitleInput = ""
+                                showSaveDialog = true
+                            },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFE8F5E9), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                                .testTag("save_button")
+                        ) {
+                            Text("💾", fontSize = 16.sp)
+                        }
                     }
 
-                    // View Album Gallery
-                    IconButton(
-                        onClick = { showGalleryDrawer = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFE3F2FD), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                            .testTag("gallery_button")
-                    ) {
-                        Text("🖼️", fontSize = 16.sp)
+                    item {
+                        // View Album Gallery
+                        IconButton(
+                            onClick = { showGalleryDrawer = true },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFE3F2FD), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                                .testTag("gallery_button")
+                        ) {
+                            Text("🖼️", fontSize = 16.sp)
+                        }
                     }
 
-                    // Parents Zone
-                    IconButton(
-                        onClick = {
-                            parentGateQuestionNum1 = (3..9).random()
-                            parentGateQuestionNum2 = (3..9).random()
-                            parentGateAnswerInput = ""
-                            isParentGateError = false
-                            showParentGateDialog = true
-                        },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFE0F2F1), CircleShape)
-                            .border(1.5.dp, Color(0xFF009688), CircleShape)
-                            .shadow(1.dp, CircleShape)
-                    ) {
-                        Text("👨‍👩‍👧", fontSize = 16.sp)
+                    item {
+                        // Parents Zone
+                        IconButton(
+                            onClick = {
+                                parentGateQuestionNum1 = (3..9).random()
+                                parentGateQuestionNum2 = (3..9).random()
+                                parentGateAnswerInput = ""
+                                isParentGateError = false
+                                showParentGateDialog = true
+                            },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFFE0F2F1), CircleShape)
+                                .border(1.5.dp, Color(0xFF009688), CircleShape)
+                                .shadow(1.dp, CircleShape)
+                        ) {
+                            Text("👨‍👩‍👧", fontSize = 16.sp)
+                        }
                     }
                 }
             }

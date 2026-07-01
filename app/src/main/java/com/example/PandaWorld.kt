@@ -120,20 +120,31 @@ fun PandaHomeLobby(
     savedDrawingsCount: Int
 ) {
     val context = LocalContext.current
-    val pandaSayings = remember {
+    val childName by viewModel.childName.collectAsState()
+    val childAge by viewModel.childAge.collectAsState()
+    val pandaName by viewModel.pandaName.collectAsState()
+
+    val pandaSayings = remember(childName, childAge, pandaName) {
         listOf(
-            "Hê lô bé yêu! Cùng tớ vẽ một bức tranh siêu lấp lánh hôm nay nha! 🐼🎨",
-            "Bé có biết tớ thích nhất là ăn bánh quy dâu không? Chẹp chẹp... ngon lắm! 🍓🍪",
-            "Cậu vẽ đẹp thế này chắc chắn sau này sẽ là đại họa sĩ đấy nhé! 🧑‍🎨🌟",
+            "Hê lô bé $childName ($childAge tuổi) yêu! Cùng $pandaName vẽ một bức tranh siêu lấp lánh hôm nay nha! 🐼🎨",
+            "Bé $childName có biết $pandaName thích nhất là ăn bánh quy dâu không? Chẹp chẹp... ngon lắm! 🍓🍪",
+            "Cậu vẽ đẹp thế này chắc chắn sau này bé $childName sẽ là đại họa sĩ đấy nhé! 🧑‍🎨🌟",
             "Tớ có chuẩn bị một hộp quà siêu to khổng lồ ở Phòng Quà Tặng đó nha! 🎁🤩",
-            "Này cậu ơi, tớ đang thèm tre non lắm, hãy vào Khu Vườn chơi với tớ đi! 🎋🐼",
+            "Này bé $childName ơi, tớ đang thèm tre non lắm, hãy vào Khu Vườn chơi với tớ đi! 🎋🐼",
             "Bạn AI thông minh của tớ vừa học thêm nét vẽ mới đấy, thử xem sao nhé! 🤖✨"
         )
     }
 
-    var speechText by remember { mutableStateOf("Chào mừng bé yêu đã tới với Thế Giới Hoạt Hình của Panda Béo! 🏡🐼🌟") }
+    var speechText by remember { mutableStateOf("Chào mừng bé $childName đã tới với Thế Giới Hoạt Hình của $pandaName! 🏡🐼🌟") }
     var pandaScale by remember { mutableStateOf(1.0f) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(childName, pandaName) {
+        speechText = "Chào mừng bé $childName đã tới với Thế Giới Hoạt Hình của $pandaName! 🏡🐼🌟"
+    }
+
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     Box(
         modifier = Modifier
@@ -158,160 +169,392 @@ fun PandaHomeLobby(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Application logo & Title
+            // Application logo, Title & Settings Button Row
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("🏡 ", fontSize = 28.sp)
-                Text(
-                    text = "VƯƠNG QUỐC PANDA",
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF2E7D32),
-                    letterSpacing = 1.sp
-                )
-                Text(" 🐼", fontSize = 28.sp)
-            }
-            Text(
-                text = "Thế giới hoạt hình diệu kỳ dành cho bé yêu",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF558B2F)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Large interactive Panda Béo speaking box
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
-                    .border(3.dp, Color(0xFF81C784), RoundedCornerShape(24.dp))
-                    .padding(16.dp)
-                    .clickable {
-                        scope.launch {
-                            // Wobble animation
-                            pandaScale = 1.2f
-                            delay(120)
-                            pandaScale = 0.9f
-                            delay(100)
-                            pandaScale = 1.0f
-                            
-                            // Random message
-                            speechText = pandaSayings.random()
-                            
-                            // Spawn beautiful sparkles
-                            viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 6)
-                            viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 6)
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .scale(pandaScale)
-                        .background(Color(0xFFE8F5E9), CircleShape)
-                        .border(2.dp, Color(0xFF4CAF50), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🐼", fontSize = 52.sp)
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🏡 ", fontSize = 28.sp)
                     Text(
-                        text = "Panda Béo trò chuyện 💬",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF388E3C)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = speechText,
-                        fontSize = 14.sp,
+                        text = "VƯƠNG QUỐC $pandaName".uppercase(),
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color(0xFF2E7D32),
-                        lineHeight = 18.sp
+                        letterSpacing = 1.sp
+                    )
+                    Text(" 🐼", fontSize = 28.sp)
+                }
+
+                var showSettingsDialog by remember { mutableStateOf(false) }
+
+                IconButton(
+                    onClick = { showSettingsDialog = true },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(Color.White, CircleShape)
+                        .border(1.5.dp, Color(0xFF81C784), CircleShape)
+                        .shadow(2.dp, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Cài đặt thông tin",
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                if (showSettingsDialog) {
+                    var tempChildName by remember { mutableStateOf(childName) }
+                    var tempChildAge by remember { mutableStateOf(childAge) }
+                    var tempPandaName by remember { mutableStateOf(pandaName) }
+
+                    AlertDialog(
+                        onDismissRequest = { showSettingsDialog = false },
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("⚙️ ", fontSize = 24.sp)
+                                Text("Cài Đặt Thông Tin Bé", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            }
+                        },
+                        text = {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Nhập thông tin để cá nhân hóa thế giới vẽ tranh của bé nhé!",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+
+                                OutlinedTextField(
+                                    value = tempChildName,
+                                    onValueChange = { tempChildName = it },
+                                    label = { Text("Biệt danh/Tên của bé") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = tempChildAge,
+                                    onValueChange = { tempChildAge = it },
+                                    label = { Text("Tuổi của bé") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = tempPandaName,
+                                    onValueChange = { tempPandaName = it },
+                                    label = { Text("Tên gọi chú Gấu Trúc") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    viewModel.setChildName(tempChildName)
+                                    viewModel.setChildAge(tempChildAge)
+                                    viewModel.setPandaName(tempPandaName)
+                                    showSettingsDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                            ) {
+                                Text("Lưu Lại", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showSettingsDialog = false }) {
+                                Text("Hủy", color = Color.Gray)
+                            }
+                        },
+                        shape = RoundedCornerShape(24.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Thế giới hoạt hình diệu kỳ dành cho bé yêu và gia đình",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF558B2F),
+                modifier = Modifier.align(Alignment.Start).padding(start = 4.dp, bottom = 12.dp)
+            )
 
-            // 6 Beautiful Room Selection Cards
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                item {
-                    RoomCard(
-                        title = "Xưởng Vẽ Mỹ Thuật",
-                        description = "Cọ màu phép thuật & hình dán ngộ nghĩnh",
-                        emoji = "🎨",
-                        backgroundColor = Color(0xFFFFEBEE),
-                        borderColor = Color(0xFFE57373),
-                        onClick = { onRoomChange("studio") }
-                    )
+            if (isLandscape) {
+                // Adaptive side-by-side design for widescreen / landscape / tablet
+                Row(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left Column: Interactive speaking Panda box
+                    Box(
+                        modifier = Modifier
+                            .weight(0.38f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(24.dp))
+                                .border(3.dp, Color(0xFF81C784), RoundedCornerShape(24.dp))
+                                .padding(12.dp)
+                                .clickable {
+                                    scope.launch {
+                                        pandaScale = 1.2f
+                                        delay(120)
+                                        pandaScale = 1.0f
+                                        speechText = pandaSayings.random()
+                                        viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 6)
+                                        viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 6)
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(70.dp)
+                                    .scale(pandaScale)
+                                    .background(Color(0xFFE8F5E9), CircleShape)
+                                    .border(2.dp, Color(0xFF4CAF50), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🐼", fontSize = 42.sp)
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = "$pandaName trò chuyện 💬",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF388E3C)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = speechText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF2E7D32),
+                                    lineHeight = 16.sp,
+                                    maxLines = 4,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
+                    // Right Column: Room grid selection cards
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .weight(0.62f)
+                            .fillMaxHeight()
+                    ) {
+                        item {
+                            RoomCard(
+                                title = "Xưởng Vẽ Mỹ Thuật",
+                                description = "Cọ màu phép thuật & hình dán",
+                                emoji = "🎨",
+                                backgroundColor = Color(0xFFFFEBEE),
+                                borderColor = Color(0xFFE57373),
+                                onClick = { onRoomChange("studio") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Phòng Robot AI",
+                                description = "Gợi ý nét vẽ phác thảo kỳ diệu",
+                                emoji = "🤖",
+                                backgroundColor = Color(0xFFE0F7FA),
+                                borderColor = Color(0xFF4DD0E1),
+                                onClick = { onRoomChange("ai_room") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Viện Bảo Tàng Tranh",
+                                description = "Trưng bày tranh vẽ lộng lẫy",
+                                emoji = "🏛️",
+                                backgroundColor = Color(0xFFFFF8E1),
+                                borderColor = Color(0xFFFFD54F),
+                                onClick = { onRoomChange("museum") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Bức Tường Vinh Danh",
+                                description = "Treo 5 huy hiệu lấp lánh bé đạt",
+                                emoji = "🏆",
+                                backgroundColor = Color(0xFFF3E5F5),
+                                borderColor = Color(0xFFBA68C8),
+                                onClick = { onRoomChange("badge_room") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Hộp Quà May Mắn",
+                                description = "Mở hộp quà nhận cọ vẽ siêu hiếm",
+                                emoji = "🎁",
+                                backgroundColor = Color(0xFFEFEBE9),
+                                borderColor = Color(0xFFA1887F),
+                                onClick = { onRoomChange("gift_room") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Khu Vườn Panda",
+                                description = "Cho Panda ăn trúc để lớn khôn",
+                                emoji = "🌳",
+                                backgroundColor = Color(0xFFE8F5E9),
+                                borderColor = Color(0xFF81C784),
+                                onClick = { onRoomChange("garden") }
+                            )
+                        }
+                    }
                 }
-                item {
-                    RoomCard(
-                        title = "Phòng Robot AI",
-                        description = "Nhờ Robot AI vẽ phác thảo kỳ diệu",
-                        emoji = "🤖",
-                        backgroundColor = Color(0xFFE0F7FA),
-                        borderColor = Color(0xFF4DD0E1),
-                        onClick = { onRoomChange("ai_room") }
-                    )
+            } else {
+                // Portrait Layout (Original vertical arrangement)
+                // Large interactive Panda Béo speaking box
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
+                        .border(3.dp, Color(0xFF81C784), RoundedCornerShape(24.dp))
+                        .padding(16.dp)
+                        .clickable {
+                            scope.launch {
+                                // Wobble animation
+                                pandaScale = 1.2f
+                                delay(120)
+                                pandaScale = 0.9f
+                                delay(100)
+                                pandaScale = 1.0f
+
+                                // Random message
+                                speechText = pandaSayings.random()
+
+                                // Spawn beautiful sparkles
+                                viewModel.spawnEmojiParticles(400f, 300f, "🌟", count = 6)
+                                viewModel.spawnEmojiParticles(400f, 300f, "✨", count = 6)
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(90.dp)
+                            .scale(pandaScale)
+                            .background(Color(0xFFE8F5E9), CircleShape)
+                            .border(2.dp, Color(0xFF4CAF50), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🐼", fontSize = 52.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "$pandaName trò chuyện 💬",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF388E3C)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = speechText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF2E7D32),
+                            lineHeight = 18.sp
+                        )
+                    }
                 }
-                item {
-                    RoomCard(
-                        title = "Viện Bảo Tàng Tranh",
-                        description = "Trưng bày tranh vẽ lộng lẫy của bé",
-                        emoji = "🏛️",
-                        backgroundColor = Color(0xFFFFF8E1),
-                        borderColor = Color(0xFFFFD54F),
-                        onClick = { onRoomChange("museum") }
-                    )
-                }
-                item {
-                    RoomCard(
-                        title = "Bức Tường Vinh Danh",
-                        description = "Nơi treo 5 huy hiệu lấp lánh bé đạt được",
-                        emoji = "🏆",
-                        backgroundColor = Color(0xFFF3E5F5),
-                        borderColor = Color(0xFFBA68C8),
-                        onClick = { onRoomChange("badge_room") }
-                    )
-                }
-                item {
-                    RoomCard(
-                        title = "Hộp Quà May Mắn",
-                        description = "Mở hộp quà mỗi ngày nhận cọ vẽ siêu hiếm",
-                        emoji = "🎁",
-                        backgroundColor = Color(0xFFEFEBE9),
-                        borderColor = Color(0xFFA1887F),
-                        onClick = { onRoomChange("gift_room") }
-                    )
-                }
-                item {
-                    RoomCard(
-                        title = "Khu Vườn Panda",
-                        description = "Cho Panda ăn trúc để lớn khôn từng ngày",
-                        emoji = "🌳",
-                        backgroundColor = Color(0xFFE8F5E9),
-                        borderColor = Color(0xFF81C784),
-                        onClick = { onRoomChange("garden") }
-                    )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 6 Beautiful Room Selection Cards
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    item {
+                        RoomCard(
+                            title = "Xưởng Vẽ Mỹ Thuật",
+                            description = "Cọ màu phép thuật & hình dán ngộ nghĩnh",
+                            emoji = "🎨",
+                            backgroundColor = Color(0xFFFFEBEE),
+                            borderColor = Color(0xFFE57373),
+                            onClick = { onRoomChange("studio") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Phòng Robot AI",
+                            description = "Nhờ Robot AI vẽ phác thảo kỳ diệu",
+                            emoji = "🤖",
+                            backgroundColor = Color(0xFFE0F7FA),
+                            borderColor = Color(0xFF4DD0E1),
+                            onClick = { onRoomChange("ai_room") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Viện Bảo Tàng Tranh",
+                            description = "Trưng bày tranh vẽ lộng lẫy của bé",
+                            emoji = "🏛️",
+                            backgroundColor = Color(0xFFFFF8E1),
+                            borderColor = Color(0xFFFFD54F),
+                            onClick = { onRoomChange("museum") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Bức Tường Vinh Danh",
+                            description = "Nơi treo 5 huy hiệu lấp lánh bé đạt được",
+                            emoji = "🏆",
+                            backgroundColor = Color(0xFFF3E5F5),
+                            borderColor = Color(0xFFBA68C8),
+                            onClick = { onRoomChange("badge_room") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Hộp Quà May Mắn",
+                            description = "Mở hộp quà mỗi ngày nhận cọ vẽ siêu hiếm",
+                            emoji = "🎁",
+                            backgroundColor = Color(0xFFEFEBE9),
+                            borderColor = Color(0xFFA1887F),
+                            onClick = { onRoomChange("gift_room") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Khu Vườn Panda",
+                            description = "Cho Panda ăn trúc để lớn khôn từng ngày",
+                            emoji = "🌳",
+                            backgroundColor = Color(0xFFE8F5E9),
+                            borderColor = Color(0xFF81C784),
+                            onClick = { onRoomChange("garden") }
+                        )
+                    }
                 }
             }
         }

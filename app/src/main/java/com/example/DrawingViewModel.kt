@@ -141,6 +141,27 @@ class DrawingViewModel : ViewModel() {
     private val _totalStickersApplied = MutableStateFlow(0)
     val totalStickersApplied: StateFlow<Int> = _totalStickersApplied.asStateFlow()
 
+    private val _childName = MutableStateFlow("Bé Bún")
+    val childName: StateFlow<String> = _childName.asStateFlow()
+
+    private val _childAge = MutableStateFlow("4")
+    val childAge: StateFlow<String> = _childAge.asStateFlow()
+
+    private val _pandaName = MutableStateFlow("Panda Béo")
+    val pandaName: StateFlow<String> = _pandaName.asStateFlow()
+
+    fun setChildName(name: String) {
+        _childName.value = name
+    }
+
+    fun setChildAge(age: String) {
+        _childAge.value = age
+    }
+
+    fun setPandaName(name: String) {
+        _pandaName.value = name
+    }
+
     fun setAiFreeFormAllowed(allowed: Boolean) {
         _isAiFreeFormAllowed.value = allowed
     }
