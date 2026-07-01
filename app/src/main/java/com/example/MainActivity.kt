@@ -1169,9 +1169,8 @@ fun DrawingPlayground(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.saveToGallery(saveTitleInput)
+                            viewModel.saveToGallery(context, saveTitleInput, canvasWidth.toInt(), canvasHeight.toInt())
                             showSaveDialog = false
-                            Toast.makeText(context, "🎉 Đã lưu tranh vào Bộ sưu tập rồi!", Toast.LENGTH_LONG).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                     ) {
@@ -1785,6 +1784,32 @@ fun DrawingPlayground(
                                                         fontSize = 9.5.sp,
                                                         color = Color.Gray
                                                     )
+                                                }
+
+                                                IconButton(
+                                                    onClick = {
+                                                        try {
+                                                             val bitmap = DrawingExporter.exportToBitmap(
+                                                                 context = context,
+                                                                 strokes = drawing.strokes,
+                                                                 stickers = drawing.stickers,
+                                                                 template = drawing.template,
+                                                                 width = canvasWidth.toInt(),
+                                                                 height = canvasHeight.toInt()
+                                                             )
+                                                             val uri = DrawingExporter.saveToDeviceStorage(context, bitmap, drawing.title)
+                                                             if (uri != null) {
+                                                                 Toast.makeText(context, "🎉 Đã tải tranh về máy thành công!", Toast.LENGTH_SHORT).show()
+                                                             } else {
+                                                                 Toast.makeText(context, "Lỗi khi lưu ảnh vào máy", Toast.LENGTH_SHORT).show()
+                                                             }
+                                                         } catch (e: Exception) {
+                                                             Toast.makeText(context, "Lỗi: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                                         }
+                                                    },
+                                                    modifier = Modifier.size(28.dp)
+                                                ) {
+                                                    Text("📥", fontSize = 16.sp)
                                                 }
 
                                                 IconButton(

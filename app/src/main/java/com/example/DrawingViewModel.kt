@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -578,7 +579,7 @@ class DrawingViewModel : ViewModel() {
     }
 
     // --- Gallery Save & Load ---
-    fun saveToGallery(title: String) {
+    fun saveToGallery(context: Context, title: String, width: Int, height: Int) {
         val finalTitle = if (title.isBlank()) "Tác phẩm của bé #${_savedDrawings.value.size + 1}" else title
         val currentDrawing = SavedDrawing(
             id = UUID.randomUUID().toString(),
@@ -589,7 +590,27 @@ class DrawingViewModel : ViewModel() {
             timestamp = System.currentTimeMillis()
         )
         _savedDrawings.value = listOf(currentDrawing) + _savedDrawings.value
-        setMascotMessage("Bức tranh \"$finalTitle\" đã được cất vào Album của bé rồi! Đẹp tuyệt vời! 🌟🖼️")
+        
+        try {
+            val bitmap = DrawingExporter.exportToBitmap(
+                context = context,
+                strokes = _strokes.value,
+                stickers = _stickers.value,
+                template = _selectedTemplate.value,
+                width = width,
+                height = height
+            )
+            val uri = DrawingExporter.saveToDeviceStorage(context, bitmap, finalTitle)
+            if (uri != null) {
+                setMascotMessage("Bức tranh \"$finalTitle\" đã được cất vào Album và lưu thành công vào bộ sưu tập ảnh của máy rồi nha! Siêu cấp tuyệt vời! 🌟🖼️")
+            } else {
+                setMascotMessage("Bức tranh \"$finalTitle\" đã được cất vào Album của bé rồi! Đẹp tuyệt vời! 🌟🖼️")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            setMascotMessage("Bức tranh \"$finalTitle\" đã được cất vào Album của bé rồi! Đẹp tuyệt vời! 🌟🖼️")
+        }
+        
         setCelebrating(true)
 
         // Check save badge
