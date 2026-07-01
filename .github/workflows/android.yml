@@ -22,14 +22,17 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Decode Debug Keystore
+      - name: Decode or Generate Debug Keystore
         run: |
           if [ -f debug.keystore.base64 ]; then
             echo "Decoding debug.keystore from base64 backup..."
-            base64 --decode debug.keystore.base64 > debug.keystore
-          else
-            echo "Warning: debug.keystore.base64 not found!"
+            python3 -c "import base64; open('debug.keystore', 'wb').write(base64.b64decode(open('debug.keystore.base64', 'rb').read()))" || base64 --decode debug.keystore.base64 > debug.keystore
           fi
+          if [ ! -f debug.keystore ] || [ ! -s debug.keystore ]; then
+            echo "debug.keystore not found or empty, generating a new one with keytool..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          cp debug.keystore app/debug.keystore
 
       - name: Prepare Environment File
         run: |
