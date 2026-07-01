@@ -121,6 +121,13 @@ class DrawingViewModel : ViewModel() {
     private val _isAiFreeFormAllowed = MutableStateFlow(false) // Safe mode: predefined templates & suggestions only by default
     val isAiFreeFormAllowed: StateFlow<Boolean> = _isAiFreeFormAllowed.asStateFlow()
 
+    private val _customGeminiApiKey = MutableStateFlow("")
+    val customGeminiApiKey: StateFlow<String> = _customGeminiApiKey.asStateFlow()
+
+    fun setCustomGeminiApiKey(key: String) {
+        _customGeminiApiKey.value = key
+    }
+
     private val _timeLimitMinutes = MutableStateFlow(0) // 0: Unlimited screen time
     val timeLimitMinutes: StateFlow<Int> = _timeLimitMinutes.asStateFlow()
 
@@ -150,12 +157,65 @@ class DrawingViewModel : ViewModel() {
     private val _pandaName = MutableStateFlow("Panda Béo")
     val pandaName: StateFlow<String> = _pandaName.asStateFlow()
 
+    // --- DRAWING CLASS ROOM STATE (NHÓM 3) ---
+    private val _selectedLesson = MutableStateFlow("panda") // "panda", "fish", "star"
+    val selectedLesson: StateFlow<String> = _selectedLesson.asStateFlow()
+
+    private val _lessonStep = MutableStateFlow(1) // Step 1, 2, 3, 4
+    val lessonStep: StateFlow<Int> = _lessonStep.asStateFlow()
+
+    enum class KidAgeTier(val title: String, val levelName: String, val description: String, val emoji: String) {
+        TODDLER("Bé Nhỏ (<= 3 tuổi)", "Lớp Họa Sĩ Mầm Non 🐣", "Tô màu hình khối siêu to, cọ vẽ tự động phóng lớn & bảng màu tươi sáng dễ nhìn.", "🐣"),
+        PRESCHOOL("Bé Mẫu Giáo (4-5 tuổi)", "Lớp Học Vẽ Hình Khối 🎨", "Tập vẽ theo đường nét đứt quãng (Tracing), đính hình dán xinh động lên tranh vẽ.", "🎨"),
+        ELEMENTARY("Bé Tiểu Học (>= 6 tuổi)", "Lớp Họa Sĩ Sáng Tạo AI 🚀", "Dạy vẽ tự do từng nét chi tiết, mở khoá toàn bộ cọ cọ kim tuyến, cầu vồng và vẽ AI.", "🚀")
+    }
+
+    fun getAgeTier(): KidAgeTier {
+        val age = _childAge.value.toIntOrNull() ?: 4
+        return when {
+            age <= 3 -> KidAgeTier.TODDLER
+            age <= 5 -> KidAgeTier.PRESCHOOL
+            else -> KidAgeTier.ELEMENTARY
+        }
+    }
+
+    fun selectLesson(lesson: String) {
+        _selectedLesson.value = lesson
+        _lessonStep.value = 1
+    }
+
+    fun nextLessonStep(maxSteps: Int) {
+        if (_lessonStep.value < maxSteps) {
+            _lessonStep.value += 1
+        }
+    }
+
+    fun prevLessonStep() {
+        if (_lessonStep.value > 1) {
+            _lessonStep.value -= 1
+        }
+    }
+
+    fun resetLesson() {
+        _lessonStep.value = 1
+    }
+
     fun setChildName(name: String) {
         _childName.value = name
     }
 
     fun setChildAge(age: String) {
         _childAge.value = age
+        // Apply default adaptive settings depending on age
+        val ageVal = age.toIntOrNull() ?: 4
+        if (ageVal <= 3) {
+            _brushWidth.value = 28f // Extra thick brush for toddlers
+            _selectedBrush.value = BrushType.PENCIL // Basic pencil/fill for toddler
+        } else if (ageVal <= 5) {
+            _brushWidth.value = 18f // Thick brush for preschoolers
+        } else {
+            _brushWidth.value = 12f // Finer brush for elementary kids
+        }
     }
 
     fun setPandaName(name: String) {
@@ -403,9 +463,10 @@ class DrawingViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val apiKey = BuildConfig.GEMINI_API_KEY
+                val customKey = _customGeminiApiKey.value.trim()
+                val apiKey = if (customKey.isNotEmpty()) customKey else BuildConfig.GEMINI_API_KEY
                 if (apiKey == "MY_GEMINI_API_KEY" || apiKey.isBlank()) {
-                    setMascotMessage("Mách nhỏ: Hãy thiết lập Khóa Bảo Mật (API Key) trong bảng điều khiển AI Studio để dùng tính năng vẽ AI nhé! 🔑")
+                    setMascotMessage("Mách nhỏ: Hãy thiết lập Khóa Bảo Mật (API Key) trong góc Cho Ba Mẹ -> Vẽ AI để bé thỏa sức vẽ nhé! 🔑")
                     _isGeneratingAi.value = false
                     return@launch
                 }

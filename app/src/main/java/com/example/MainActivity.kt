@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -105,6 +106,10 @@ fun DrawingPlayground(
     var showBadgesDialog by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf(0) } // 0: Màu sắc, 1: Cọ vẽ, 2: Hình dán, 3: Vẽ mẫu, 4: Vẽ AI
     var activeRoom by remember { mutableStateOf("home") }
+
+    BackHandler(enabled = activeRoom != "home") {
+        activeRoom = "home"
+    }
 
     // --- Parent Gate States ---
     var showParentGateDialog by remember { mutableStateOf(false) }
@@ -872,7 +877,15 @@ fun DrawingPlayground(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        val colorCats = listOf("Cơ Bản 🔴", "Pastel 🌸", "Neon 🌟", "Kim Loại 🏆")
+                                        val ageVal = viewModel.childAge.value.toIntOrNull() ?: 4
+                                        val colorCats = when {
+                                            ageVal <= 3 -> listOf("Cơ Bản 🔴")
+                                            ageVal <= 5 -> listOf("Cơ Bản 🔴", "Pastel 🌸", "Neon 🌟")
+                                            else -> listOf("Cơ Bản 🔴", "Pastel 🌸", "Neon 🌟", "Kim Loại 🏆")
+                                        }
+                                        if (selectedColorCategory >= colorCats.size) {
+                                            selectedColorCategory = 0
+                                        }
                                         colorCats.forEachIndexed { idx, title ->
                                             val isSel = selectedColorCategory == idx
                                             Box(
@@ -967,11 +980,17 @@ fun DrawingPlayground(
                                 // --- TAB 1: CREATIVE BRUSHES ---
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text("Chọn nét cọ vẽ phép thuật của bé:", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    val ageVal = viewModel.childAge.value.toIntOrNull() ?: 4
+                                    val filteredBrushes = when {
+                                        ageVal <= 3 -> listOf(BrushType.PENCIL, BrushType.MARKER, BrushType.RAINBOW)
+                                        ageVal <= 5 -> listOf(BrushType.PENCIL, BrushType.MARKER, BrushType.RAINBOW, BrushType.GLITTER, BrushType.HEART, BrushType.FLOWER)
+                                        else -> BrushType.values().toList()
+                                    }
                                     LazyRow(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        items(BrushType.values()) { brush ->
+                                        items(filteredBrushes) { brush ->
                                             val isSel = selectedBrush == brush && !isEraser
                                             Card(
                                                 shape = RoundedCornerShape(16.dp),
@@ -1469,7 +1488,7 @@ fun DrawingPlayground(
                 },
                 text = {
                     Column(
-                        modifier = Modifier.fillMaxWidth().height(280.dp),
+                        modifier = Modifier.fillMaxWidth().height(380.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // Tiny Tab row
@@ -1578,14 +1597,20 @@ fun DrawingPlayground(
                                     }
                                 }
                                 2 -> {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    val customApiKey by viewModel.customGeminiApiKey.collectAsState()
+                                    var isPasswordVisible by remember { mutableStateOf(false) }
+
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
                                         Text("🛡️ Chế Độ An Toàn & Bảo Mật Vẽ AI:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF00796B))
                                         Text("Nhập văn bản tự do vẽ AI có thể chứa rủi ro. Hãy bật chế độ giới hạn an toàn cho bé yêu:", fontSize = 11.sp, color = Color.Gray)
                                         
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(vertical = 8.dp),
+                                                .padding(vertical = 4.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
@@ -1599,6 +1624,28 @@ fun DrawingPlayground(
                                             )
                                         }
 
+                                        Divider()
+
+                                        Text("🔑 Khóa bảo mật Gemini API (API Key) cá nhân:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00796B))
+                                        Text("Nhập mã API Key của bạn để sử dụng tính năng vẽ AI tự do không giới hạn:", fontSize = 10.sp, color = Color.Gray)
+                                        
+                                        OutlinedTextField(
+                                            value = customApiKey,
+                                            onValueChange = { viewModel.setCustomGeminiApiKey(it) },
+                                            placeholder = { Text("Mã API Key từ AI Studio...", fontSize = 11.sp) },
+                                            singleLine = true,
+                                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            visualTransformation = if (isPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                            trailingIcon = {
+                                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                                    Text(if (isPasswordVisible) "👁️" else "🙈", fontSize = 14.sp)
+                                                }
+                                            }
+                                        )
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        
                                         Card(
                                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                                             shape = RoundedCornerShape(8.dp)

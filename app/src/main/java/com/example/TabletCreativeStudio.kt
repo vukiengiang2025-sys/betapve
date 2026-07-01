@@ -688,7 +688,15 @@ fun TabletCreativeStudio(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        val colorCats = listOf("Cơ Bản", "Pastel", "Neon", "Kim Loại")
+                        val ageVal = viewModel.childAge.value.toIntOrNull() ?: 4
+                        val colorCats = when {
+                            ageVal <= 3 -> listOf("Cơ Bản")
+                            ageVal <= 5 -> listOf("Cơ Bản", "Pastel", "Neon")
+                            else -> listOf("Cơ Bản", "Pastel", "Neon", "Kim Loại")
+                        }
+                        if (selectedColorCategory >= colorCats.size) {
+                            selectedColorCategory = 0
+                        }
                         colorCats.forEachIndexed { idx, title ->
                             val isSel = selectedColorCategory == idx
                             Box(
@@ -774,11 +782,17 @@ fun TabletCreativeStudio(
                 ) {
                     Text("🖌️ Nét Vẽ Diệu Kỳ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
 
+                    val ageVal = viewModel.childAge.value.toIntOrNull() ?: 4
+                    val filteredBrushes = when {
+                        ageVal <= 3 -> listOf(BrushType.PENCIL, BrushType.MARKER, BrushType.RAINBOW)
+                        ageVal <= 5 -> listOf(BrushType.PENCIL, BrushType.MARKER, BrushType.RAINBOW, BrushType.GLITTER, BrushType.HEART, BrushType.FLOWER)
+                        else -> BrushType.values().toList()
+                    }
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        items(BrushType.values()) { brush ->
+                        items(filteredBrushes) { brush ->
                             val isSel = selectedBrush == brush && !isEraser
                             Card(
                                 shape = RoundedCornerShape(10.dp),

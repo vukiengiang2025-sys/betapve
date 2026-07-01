@@ -67,6 +67,13 @@ fun PandaWorldHome(
                 savedDrawingsCount = savedDrawings.size
             )
         }
+        "drawing_class" -> {
+            PandaDrawingClassRoom(
+                onBack = { onRoomChange("home") },
+                onGoToStudio = { onRoomChange("studio") },
+                viewModel = viewModel
+            )
+        }
         "ai_room" -> {
             PandaAiRoom(
                 onBack = { onRoomChange("home") },
@@ -358,7 +365,7 @@ fun PandaHomeLobby(
 
                     // Right Column: Room grid selection cards
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Adaptive(minSize = 140.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier
@@ -373,6 +380,16 @@ fun PandaHomeLobby(
                                 backgroundColor = Color(0xFFFFEBEE),
                                 borderColor = Color(0xFFE57373),
                                 onClick = { onRoomChange("studio") }
+                            )
+                        }
+                        item {
+                            RoomCard(
+                                title = "Lớp Học Vẽ Tranh",
+                                description = "Học vẽ từng nét & luyện theo tuổi",
+                                emoji = "🏫",
+                                backgroundColor = Color(0xFFE8EAF6),
+                                borderColor = Color(0xFF7986CB),
+                                onClick = { onRoomChange("drawing_class") }
                             )
                         }
                         item {
@@ -490,7 +507,7 @@ fun PandaHomeLobby(
 
                 // 6 Beautiful Room Selection Cards
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(minSize = 140.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.weight(1f)
@@ -503,6 +520,16 @@ fun PandaHomeLobby(
                             backgroundColor = Color(0xFFFFEBEE),
                             borderColor = Color(0xFFE57373),
                             onClick = { onRoomChange("studio") }
+                        )
+                    }
+                    item {
+                        RoomCard(
+                            title = "Lớp Học Vẽ Tranh",
+                            description = "Học vẽ từng nét & luyện theo tuổi",
+                            emoji = "🏫",
+                            backgroundColor = Color(0xFFE8EAF6),
+                            borderColor = Color(0xFF7986CB),
+                            onClick = { onRoomChange("drawing_class") }
                         )
                     }
                     item {
@@ -1615,6 +1642,662 @@ fun PandaGarden(
                     .shadow(3.dp, RoundedCornerShape(20.dp))
             ) {
                 Text("Cho Panda Ăn Trúc 🎋", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+    }
+}
+
+// =====================================================================
+// CLASSROOM ROOM: PERSONALIZED AGE-ADAPTIVE LEARNING (NHÓM 3)
+// =====================================================================
+
+@Composable
+fun PandaDrawingClassRoom(
+    onBack: () -> Unit,
+    onGoToStudio: () -> Unit,
+    viewModel: DrawingViewModel
+) {
+    val childName by viewModel.childName.collectAsState()
+    val childAge by viewModel.childAge.collectAsState()
+    val pandaName by viewModel.pandaName.collectAsState()
+    val ageTier = viewModel.getAgeTier()
+
+    val lessonStep by viewModel.lessonStep.collectAsState()
+    val selectedLesson by viewModel.selectedLesson.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F8E9))
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Top Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(Color.White, CircleShape)
+                        .border(1.5.dp, Color(0xFF4CAF50), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                        contentDescription = "Quay lại",
+                        tint = Color(0xFF2E7D32)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "🏫 LỚP HỌC VẼ CỦA ${pandaName.uppercase()}",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF2E7D32)
+                )
+            }
+
+            // Current Class badge
+            Text(
+                text = ageTier.levelName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier
+                    .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp))
+                    .padding(vertical = 4.dp, horizontal = 10.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Kid Greeting Card with appropriate advice
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = ageTier.emoji,
+                    fontSize = 32.sp,
+                    modifier = Modifier.padding(6.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Column {
+                    Text(
+                        text = "Chào bé $childName ($childAge tuổi) nhé! 👋",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1B5E20)
+                    )
+                    Text(
+                        text = ageTier.description,
+                        fontSize = 10.5.sp,
+                        color = Color.DarkGray,
+                        lineHeight = 14.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Main Class Workspace divided by Age Tier
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (ageTier) {
+                DrawingViewModel.KidAgeTier.TODDLER -> {
+                    ToddlerDrawingClass(
+                        childName = childName,
+                        pandaName = pandaName,
+                        onGoToStudio = onGoToStudio,
+                        viewModel = viewModel
+                    )
+                }
+                DrawingViewModel.KidAgeTier.PRESCHOOL -> {
+                    PreschoolDrawingClass(
+                        childName = childName,
+                        pandaName = pandaName,
+                        onGoToStudio = onGoToStudio,
+                        viewModel = viewModel
+                    )
+                }
+                DrawingViewModel.KidAgeTier.ELEMENTARY -> {
+                    ElementaryDrawingClass(
+                        childName = childName,
+                        pandaName = pandaName,
+                        lessonStep = lessonStep,
+                        selectedLesson = selectedLesson,
+                        onGoToStudio = onGoToStudio,
+                        viewModel = viewModel
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ToddlerDrawingClass(
+    childName: String,
+    pandaName: String,
+    onGoToStudio: () -> Unit,
+    viewModel: DrawingViewModel
+) {
+    val scope = rememberCoroutineScope()
+    var selectedToyIndex by remember { mutableStateOf(-1) }
+    val colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFF2979FF), Color(0xFF4CAF50))
+    val colorNames = listOf("ĐỎ 🔴", "VÀNG 🟡", "XANH DƯƠNG 🔵", "XANH LÁ 🟢")
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "🎈 TRÒ CHƠI BẤM BÓNG PHÁT HIỆN MÀU SẮC 🎈",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFFE91E63)
+        )
+        Text(
+            text = "Bé hãy bấm vào bóng bay để bùng nổ phép màu sắc nha!",
+            fontSize = 11.sp,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+
+        // Fun color bubbles popping
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            colors.forEachIndexed { index, color ->
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .background(color, CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                        .clickable {
+                            scope.launch {
+                                viewModel.spawnEmojiParticles(
+                                    300f + (index * 100),
+                                    350f,
+                                    "✨",
+                                    count = 10
+                                )
+                                viewModel.selectColor(color)
+                                viewModel.setMascotMessage("Bùm! Bé vừa bấm bóng màu ${colorNames[index]} lấp lánh cực đẹp! 🌟🎈")
+                                selectedToyIndex = index
+                            }
+                        }
+                        .shadow(2.dp, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = if (selectedToyIndex == index) "💥" else "🎈", fontSize = 24.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFDE7)),
+            modifier = Modifier.fillMaxWidth().border(1.5.dp, Color(0xFFFFF176), RoundedCornerShape(16.dp))
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "🍎 THỬ THÁCH VẼ ĐƠN GIẢN CHO BÉ 🍎",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF57F17)
+                )
+                Text(
+                    text = "Chúng mình cùng tô màu Bông Hoa khổng lồ với nét cọ vẽ to dễ vẽ nhé!",
+                    fontSize = 10.5.sp,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
+                )
+
+                Button(
+                    onClick = {
+                        viewModel.selectColor(Color(0xFFFF5252)) // Red default
+                        viewModel.selectTemplate(ColoringTemplate.FLOWER)
+                        viewModel.selectBrush(BrushType.PENCIL)
+                        onGoToStudio()
+                        viewModel.setMascotMessage("Yee! Bé $childName ơi, tớ đã chuẩn bị hình Bông Hoa siêu to và cọ vẽ mầm non siêu dễ thương cho bé rồi nè! 🌸🎨")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4081)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Tô Màu Bông Hoa Ngay 🌸", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PreschoolDrawingClass(
+    childName: String,
+    pandaName: String,
+    onGoToStudio: () -> Unit,
+    viewModel: DrawingViewModel
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "📐 TẬP VẼ HÌNH KHỐI THEO NÉT ĐỨT (TRACING) 📐",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF00897B)
+        )
+        Text(
+            text = "Học vẽ nét cơ bản giúp tay bé khéo léo hơn mỗi ngày!",
+            fontSize = 11.sp,
+            color = Color.Gray
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Kitty Card
+            Card(
+                modifier = Modifier.weight(1f).clickable {
+                    viewModel.selectTemplate(ColoringTemplate.KITTY)
+                    onGoToStudio()
+                    viewModel.setMascotMessage("Chào bé $childName! Mau theo các đường nét đứt để vẽ khuôn mặt mèo Kitty dễ thương nhé! 🐱🖋️")
+                },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("🐱", fontSize = 28.sp)
+                    Text("Mèo Kitty", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00796B))
+                    Text("Nét vẽ đứt quãng", fontSize = 8.5.sp, color = Color.Gray)
+                }
+            }
+
+            // Car Card
+            Card(
+                modifier = Modifier.weight(1f).clickable {
+                    viewModel.selectTemplate(ColoringTemplate.CAR)
+                    onGoToStudio()
+                    viewModel.setMascotMessage("Chào bé! Cùng vẽ ô tô chạy bon bon trên phố nào! Bé hãy tô và vẽ theo đường viền nha! 🚗⚡")
+                },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("🚗", fontSize = 28.sp)
+                    Text("Xe Ô Tô", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3F51B5))
+                    Text("Hình khối chuyển động", fontSize = 8.5.sp, color = Color.Gray)
+                }
+            }
+
+            // Star Card
+            Card(
+                modifier = Modifier.weight(1f).clickable {
+                    viewModel.selectTemplate(ColoringTemplate.STAR)
+                    onGoToStudio()
+                    viewModel.setMascotMessage("Gấu trúc $pandaName đố bé vẽ được ngôi sao lấp lánh đó! Bé vẽ theo nét viền mờ nhé! ⭐✨")
+                },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("⭐", fontSize = 28.sp)
+                    Text("Ngôi Sao", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                    Text("Nét vẽ góc cạnh", fontSize = 8.5.sp, color = Color.Gray)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Encouragement banner
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFE0F7FA), RoundedCornerShape(14.dp))
+                .border(1.dp, Color(0xFF4DD0E1), RoundedCornerShape(14.dp))
+                .padding(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🐼", fontSize = 28.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$pandaName gợi ý: Hãy dán thêm các sticker động vật ngộ nghĩnh lên góc tranh sau khi vẽ xong nha!",
+                    fontSize = 10.sp,
+                    color = Color(0xFF006064),
+                    lineHeight = 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ElementaryDrawingClass(
+    childName: String,
+    pandaName: String,
+    lessonStep: Int,
+    selectedLesson: String,
+    onGoToStudio: () -> Unit,
+    viewModel: DrawingViewModel
+) {
+    val lessons = listOf(
+        Pair("panda", "Gấu Trúc Mập Mạp 🐼"),
+        Pair("fish", "Cá Vàng Bơi Lội 🐟"),
+        Pair("star", "Ngôi Sao Kỳ Diệu ⭐")
+    )
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "🎨 LỚP HỌC VẼ TỪNG NÉT CHUYÊN NGHIỆP 🎨",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF3F51B5)
+        )
+
+        // Lesson selector row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            lessons.forEach { (id, title) ->
+                val isSelected = selectedLesson == id
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) Color(0xFF3F51B5) else Color.White)
+                        .border(1.dp, if (isSelected) Color.Transparent else Color.LightGray, RoundedCornerShape(10.dp))
+                        .clickable { viewModel.selectLesson(id) }
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title.split(" ")[0] + " " + title.split(" ")[1],
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) Color.White else Color.Black,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Step Display Layout
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.fillMaxWidth().border(1.5.dp, Color(0xFF3F51B5).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "BÀI VẼ: ${lessons.firstOrNull { it.first == selectedLesson }?.second?.uppercase()}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF303F9F)
+                )
+
+                // Step dots indicator
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (step in 1..4) {
+                        val isCurrent = lessonStep == step
+                        Box(
+                            modifier = Modifier
+                                .size(if (isCurrent) 14.dp else 10.dp)
+                                .background(if (isCurrent) Color(0xFF3F51B5) else Color.LightGray, CircleShape)
+                                .border(1.dp, Color.White, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isCurrent) {
+                                Text(text = "$step", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                // Interactive Tutorial Diagram (Dynamic Canvas Drawing!)
+                Box(
+                    modifier = Modifier
+                        .size(160.dp, 120.dp)
+                        .background(Color(0xFFFAFAFA), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp))
+                ) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                        val cx = size.width / 2f
+                        val cy = size.height / 2f
+                        
+                        when (selectedLesson) {
+                            "panda" -> {
+                                // Step 1: Draw head
+                                if (lessonStep >= 1) {
+                                    drawCircle(
+                                        color = Color.LightGray,
+                                        radius = 35f,
+                                        center = androidx.compose.ui.geometry.Offset(cx, cy),
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                                    )
+                                }
+                                // Step 2: Add ears
+                                if (lessonStep >= 2) {
+                                    drawCircle(Color.Black, 10f, androidx.compose.ui.geometry.Offset(cx - 28f, cy - 28f))
+                                    drawCircle(Color.Black, 10f, androidx.compose.ui.geometry.Offset(cx + 28f, cy - 28f))
+                                }
+                                // Step 3: Add eyes/nose
+                                if (lessonStep >= 3) {
+                                    drawCircle(Color.Black, 6f, androidx.compose.ui.geometry.Offset(cx - 10f, cy - 4f))
+                                    drawCircle(Color.Black, 6f, androidx.compose.ui.geometry.Offset(cx + 10f, cy - 4f))
+                                    drawCircle(Color.Black, 4f, androidx.compose.ui.geometry.Offset(cx, cy + 8f))
+                                }
+                                // Step 4: Cheeks / color
+                                if (lessonStep >= 4) {
+                                    drawCircle(Color(0xFFFF8A80), 6f, androidx.compose.ui.geometry.Offset(cx - 20f, cy + 10f))
+                                    drawCircle(Color(0xFFFF8A80), 6f, androidx.compose.ui.geometry.Offset(cx + 20f, cy + 10f))
+                                }
+                            }
+                            "fish" -> {
+                                // Step 1: Body oval
+                                if (lessonStep >= 1) {
+                                    drawOval(
+                                        color = Color.LightGray,
+                                        topLeft = androidx.compose.ui.geometry.Offset(cx - 45f, cy - 25f),
+                                        size = androidx.compose.ui.geometry.Size(90f, 50f),
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                                    )
+                                }
+                                // Step 2: Tail
+                                if (lessonStep >= 2) {
+                                    val tailPath = androidx.compose.ui.graphics.Path().apply {
+                                        moveTo(cx + 40f, cy)
+                                        lineTo(cx + 65f, cy - 25f)
+                                        lineTo(cx + 65f, cy + 25f)
+                                        close()
+                                    }
+                                    drawPath(tailPath, Color(0xFFFFB74D))
+                                }
+                                // Step 3: Fins & eyes
+                                if (lessonStep >= 3) {
+                                    drawCircle(Color.Black, 4f, androidx.compose.ui.geometry.Offset(cx - 25f, cy - 6f))
+                                    drawCircle(Color(0xFF29B6F6), 6f, androidx.compose.ui.geometry.Offset(cx - 50f, cy - 20f))
+                                }
+                                // Step 4: Rainbow scale sparkles
+                                if (lessonStep >= 4) {
+                                    drawCircle(Color(0xFFE040FB), 4f, androidx.compose.ui.geometry.Offset(cx, cy))
+                                    drawCircle(Color(0xFF00E676), 4f, androidx.compose.ui.geometry.Offset(cx + 15f, cy + 5f))
+                                }
+                            }
+                            else -> { // Star
+                                // Step 1: Pentagram skeleton
+                                if (lessonStep >= 1) {
+                                    drawCircle(
+                                        color = Color.LightGray,
+                                        radius = 35f,
+                                        center = androidx.compose.ui.geometry.Offset(cx, cy),
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f)
+                                    )
+                                }
+                                // Step 2: Star vertices
+                                if (lessonStep >= 2) {
+                                    val starPath = androidx.compose.ui.graphics.Path().apply {
+                                        moveTo(cx, cy - 40f)
+                                        lineTo(cx + 12f, cy - 10f)
+                                        lineTo(cx + 40f, cy - 10f)
+                                        lineTo(cx + 16f, cy + 8f)
+                                        lineTo(cx + 26f, cy + 38f)
+                                        lineTo(cx, cy + 18f)
+                                        lineTo(cx - 26f, cy + 38f)
+                                        lineTo(cx - 16f, cy + 8f)
+                                        lineTo(cx - 40f, cy - 10f)
+                                        lineTo(cx - 12f, cy - 10f)
+                                        close()
+                                    }
+                                    drawPath(starPath, Color(0xFFFFF176), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
+                                }
+                                // Step 3: Glow / fill
+                                if (lessonStep >= 3) {
+                                    val starPath = androidx.compose.ui.graphics.Path().apply {
+                                        moveTo(cx, cy - 40f)
+                                        lineTo(cx + 12f, cy - 10f)
+                                        lineTo(cx + 40f, cy - 10f)
+                                        lineTo(cx + 16f, cy + 8f)
+                                        lineTo(cx + 26f, cy + 38f)
+                                        lineTo(cx, cy + 18f)
+                                        lineTo(cx - 26f, cy + 38f)
+                                        lineTo(cx - 16f, cy + 8f)
+                                        lineTo(cx - 40f, cy - 10f)
+                                        lineTo(cx - 12f, cy - 10f)
+                                        close()
+                                    }
+                                    drawPath(starPath, Color(0xFFFFF59D))
+                                }
+                                // Step 4: Sparkles
+                                if (lessonStep >= 4) {
+                                    drawCircle(Color(0xFFFFD54F), 6f, androidx.compose.ui.geometry.Offset(cx - 50f, cy - 30f))
+                                    drawCircle(Color(0xFFFFD54F), 6f, androidx.compose.ui.geometry.Offset(cx + 50f, cy + 30f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step instructions
+                val stepText = when (selectedLesson) {
+                    "panda" -> when (lessonStep) {
+                        1 -> "Bước 1: Vẽ một hình tròn to ở giữa làm đầu gấu trúc béo nhé! ⚪"
+                        2 -> "Bước 2: Vẽ thêm 2 tai tròn đen láy ở trên đầu nha! 🖤"
+                        3 -> "Bước 3: Vẽ đôi mắt hột mít múp míp đen láy & chiếc mũi xinh xắn nhé! 👀"
+                        else -> "Bước 4: Hãy dán má hồng lấp lánh bằng cọ Vẽ Kim Tuyến đón xuân thôi! ✨"
+                    }
+                    "fish" -> when (lessonStep) {
+                        1 -> "Bước 1: Vẽ một hình bầu dục nằm ngang làm cơ thể chú cá vàng nha! 🐟"
+                        2 -> "Bước 2: Vẽ một chiếc đuôi cá xinh xắn hình tam giác phía sau nhé! 🎏"
+                        3 -> "Bước 3: Thêm mắt to bự tròn đen và chiếc vây cá vẫy vẫy! 👀"
+                        else -> "Bước 4: Hãy dùng cọ vẽ CẦU VỒNG 🌈 vẽ làn vảy cá óng ánh phép thuật nha!"
+                    }
+                    else -> when (lessonStep) {
+                        1 -> "Bước 1: Vẽ khung tròn mờ định vị để ngôi sao cân đối nhất nha! ⚪"
+                        2 -> "Bước 2: Vẽ 5 cánh nhọn của ngôi sao may mắn theo hướng dẫn mờ nhé! ⭐"
+                        3 -> "Bước 3: Tô màu vàng óng đầy đặn ngập tràn cho ngôi sao bừng sáng!"
+                        else -> "Bước 4: Hãy dùng cọ KIM TUYẾN ✨ vẽ thêm các vệt sáng lấp lánh xung quanh nha!"
+                    }
+                }
+
+                Text(
+                    text = stepText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 15.sp,
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+
+                // Navigation row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { viewModel.prevLessonStep() },
+                        enabled = lessonStep > 1
+                    ) {
+                        Text("↩️ Quay Lại", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (lessonStep < 4) {
+                        Button(
+                            onClick = { viewModel.nextLessonStep(4) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3F51B5))
+                        ) {
+                            Text("Tiếp Tục ↪️", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                viewModel.selectTemplate(ColoringTemplate.BLANK)
+                                if (selectedLesson == "panda") {
+                                    viewModel.selectBrush(BrushType.GLITTER)
+                                } else if (selectedLesson == "fish") {
+                                    viewModel.selectBrush(BrushType.RAINBOW)
+                                } else {
+                                    viewModel.selectBrush(BrushType.GLITTER)
+                                }
+                                onGoToStudio()
+                                viewModel.setMascotMessage("Bé $childName ơi, hãy vẽ hình ${lessons.firstOrNull { it.first == selectedLesson }?.second} chúng mình vừa học lên tấm bảng trắng phép thuật này nhé! 🎨🌟")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                        ) {
+                            Text("Vào Xưởng Thực Hành 🎨", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }
